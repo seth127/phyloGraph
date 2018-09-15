@@ -16,6 +16,7 @@ import plotly.graph_objs as go
 TREE_OF_LIFE = "http://tolweb.org/onlinecontributors/app?service=external&page=xml/"
 TOL_SEARCH = "GroupSearchService&group={}"
 TOL_FETCH = "TreeStructureService&node_id={}"
+LIMIT = 100000 # limit on how many lines to fetch from Tree of Life
 
 def split_stat(n, start, end):
     try:
@@ -40,36 +41,82 @@ class phyloData:
         self.links_list = None
         self.raw = None
 
-    def search_name(self)
-    '''
-    Searches Tree of Life for a free text name match
-    NOTES:
-        - is case sensitive
-        - will search anywhere in the name
-        - almost all names are capitalized 
-            (for example "Homo" will get Home Sapiens
-             but "homo" will get you species with "homo" somewhere in the middle)
-    '''
+    def search_name(self, query):
+        '''
+        Searches Tree of Life for a free text name match
+        '''
+        query_url = TREE_OF_LIFE+TOL_SEARCH.format(query)
+        #print("fetching {} ...".format(query_url))
+        raw_search = []
+        with requests.get(query_url, stream=True) as r:
+            i = 0
+            for c in r.iter_lines():
+                c = c.decode('utf-8')#.strip()
+                i +=1
+                raw_search.append(c)
+                if i % 5000 == 0:
+                    print(i, end=' ')
+                if i > LIMIT:
+                    break
+        # parse and return
+        df, links_list = self.parse_raw(raw_search, named=False, assign=False)
+        return df[['name', 'id']]
 
-    def load_raw_file(self, raw_file):
+    def fetch_tol_data(self, query, named=True):
+        '''
+        Fetches tree starting at specified id from Tree of Life
+        '''
+        if not isinstance(query, int):
+            return "Must pass integer 'id' to fetch. Use search_name() for free text search and 'id' look up."
+
+        query_url = TREE_OF_LIFE+TOL_FETCH.format(query)
+        print("fetching {} ".format(query_url), end='', flush=True)
+        raw_resp = []
+        with requests.get(query_url, stream=True) as r:
+            i = 0
+            for c in r.iter_lines():
+                c = c.decode('utf-8')#.strip()
+                i +=1
+                raw_resp.append(c)
+                if i % 1000 == 0:
+                    print('.', end='', flush=True)
+                elif i % 10000 == 0:
+                    print(i, end='', flush=True)
+                if i > LIMIT:
+                    break
+
+        print("\nFetched {} lines. Parsing and assigning...".format(i))
+        #print("len(raw_resp) {}".format(len(raw_resp)))
+        #print("raw_resp[:3] {}".format(raw_resp[:3]))
+        # parse and return
+        self.raw = raw_resp
+        self.parse_raw(raw_resp, named=named)
+        print("All done. {} organisms fetched.".format(self.df.shape[0]))
+
+    def load_raw_file(self, raw_file, named=True):
         # load file
         with open(raw_file, 'r') as f:
             raw = f.read().split('\n')
         #print("{} lines in raw file".format(len(raw)))
         self.raw = raw
+        # parse to df and links_list
+        parse_raw(self.raw, named=named)
+        print("All done. {} organisms fetched.".format(self.df.shape[0]))
 
     def write_raw_data(self, raw_file):
-    if self.raw is not None:
-        with open(raw_file, 'w') as f:
-            f.write('\n'.join(self.raw))
-        print("raw data written to {}".format(raw_file))
-    else:
-        print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
-        
-    def parse_raw(self, named=True):
+        if self.raw is not None:
+            with open(raw_file, 'w') as f:
+                f.write('\n'.join(self.raw))
+            print("raw data written to {}".format(raw_file))
+        else:
+            print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
+            
+    def parse_raw(self, raw, named=True, assign=True):
         '''parses the raw output from Tree of Life
-        or a file with that raw output in it'''
-        raw = self.raw
+        or a file with that raw output in it
+
+        if assign=False this function returns the 
+        df and links_list instead of assigning them to self'''
         # get nodes
         nodes_raw = []
         for i in range(len(raw)):
@@ -85,18 +132,36 @@ class phyloData:
         # parse node stats
         nodes_list = []
         for n in nodes_raw:
-            # get grouping
-            this_extinct = int(split_stat(n, 'NODE EXTINCT="', '"'))
-            # get phylesis
-            this_phylesis = int(split_stat(n, 'PHYLESIS="', '"'))
-            # get id
-            this_id = int(split_stat(n, 'ID="', '"'))
             # get name
-            this_name = split_stat(n, 'CDATA[', ']')
+            try:
+                this_name = split_stat(n, 'CDATA[', ']')
+            except:
+                this_name = None
+            # get extinction status
+            try:
+                this_extinct = int(split_stat(n, 'NODE EXTINCT="', '"'))
+            except:
+                this_extinct = None
+            # get phylesis
+            try:
+                this_phylesis = int(split_stat(n, 'PHYLESIS="', '"'))
+            except:
+                this_phylesis = None
+            # get id
+            try:
+                this_id = int(split_stat(n, 'ID="', '"'))
+            except:
+                this_id = None
             # get num ancestors
-            this_ancestor = int(split_stat(n, 'ANCESTORWITHPAGE="', '"'))
+            try:
+                this_ancestor = int(split_stat(n, 'ANCESTORWITHPAGE="', '"'))
+            except:
+                this_ancestor = None
             # get num kids
-            this_num_kids = int(split_stat(n, 'CHILDCOUNT="', '"'))
+            try:
+                this_num_kids = int(split_stat(n, 'CHILDCOUNT="', '"'))
+            except:
+                this_num_kids = None
             # assign
             nodes_list.append({
                 'extinct' : this_extinct,
@@ -163,9 +228,13 @@ class phyloData:
         #print("max(df['depth']): {}".format(max(df['depth'])))
 
         #
-        self.df = df
-        self.links_list = links_list
-        print("All done loading raw file.")
+        if assign:
+            self.df = df
+            self.links_list = links_list
+        else:
+            return df, links_list
+
+        #print("All done parsing raw input.")
 
     def write_prep_data(self, df_file, links_file):
         '''writes the prepared nodes df and links list to files'''
@@ -216,7 +285,7 @@ class phyloGraph():
     def create_plot_data(self, 
                          highlight = 'all',
                          max_nodes = 5000,
-                         max_depth = 10,
+                         max_depth = 20,
                          color_attr = 'extinct',
                          Z_dim = 'depth'):
         ''''''
