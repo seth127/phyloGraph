@@ -78,10 +78,11 @@ class phyloData:
                 c = c.decode('utf-8')#.strip()
                 i +=1
                 raw_resp.append(c)
-                if i % 1000 == 0:
-                    print('.', end='', flush=True)
-                elif i % 10000 == 0:
+                if i % 10000 == 0:
                     print(i, end='', flush=True)
+                elif i % 1000 == 0:
+                    print('.', end='', flush=True)
+                # break after hard limit
                 if i > LIMIT:
                     break
 
@@ -444,8 +445,7 @@ class phyloGraph():
                                      size=6,
                                      color=group,
                                      opacity=0.6,
-                                     colorscale='Viridis',
-                                     line=dict(color='rgb(50,50,50)', width=0.5)
+                                     colorscale='Viridis'
                                      ),
                        text=labels,
                        hoverinfo='text'

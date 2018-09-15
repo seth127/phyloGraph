@@ -10,9 +10,8 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 
 ## To Do List
 
-* write method to pull the data from the website instead of file
-    * might need to split out part of the `load_from_raw()` file that does all the processing.
-    * gonna want to hard-code a limit on number of lines
+* build a UI with flask or something
+    * can plotly be embedded in a way that refreshes automatically?
 * write a wrapper to filter on an id and re-render the plot
 * make the plot Z-dim by year of appearance instead of just generations
 * have some smarter X- and Y-dims (maybe?)
