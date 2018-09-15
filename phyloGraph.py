@@ -12,6 +12,11 @@ import plotly.plotly as py
 from plotly.offline import iplot
 import plotly.graph_objs as go
 
+# constants
+TREE_OF_LIFE = "http://tolweb.org/onlinecontributors/app?service=external&page=xml/"
+TOL_SEARCH = "GroupSearchService&group={}"
+TOL_FETCH = "TreeStructureService&node_id={}"
+
 def split_stat(n, start, end):
     try:
         this_stat = n.split(start)[1].split(end)[0]
@@ -23,21 +28,48 @@ def rn():
     return np.random.uniform(-1,1,1)[0]
 
 
-class phyloPlot:
+class phyloData:
     '''
+    either fetches data from the Tree of Life website,
+    loads raw data from file,
+    or loads prepared data from a files.
     '''
-    def __init__(self, username=None, api_key=None):
-        self.username = username
-        self.api_key = api_key
-        if self.username:
-            plotly.tools.set_credentials_file(username=self.username, api_key=self.api_key)
+    def __init__(self):
+        print("naw")
+        self.df = None
+        self.links_list = None
+        self.raw = None
 
-    def load_raw_file(self, data_file, named=True):
+    def search_name(self)
+    '''
+    Searches Tree of Life for a free text name match
+    NOTES:
+        - is case sensitive
+        - will search anywhere in the name
+        - almost all names are capitalized 
+            (for example "Homo" will get Home Sapiens
+             but "homo" will get you species with "homo" somewhere in the middle)
+    '''
+
+    def load_raw_file(self, raw_file):
         # load file
-        with open(data_file, 'r') as f:
+        with open(raw_file, 'r') as f:
             raw = f.read().split('\n')
         #print("{} lines in raw file".format(len(raw)))
+        self.raw = raw
+
+    def write_raw_data(self, raw_file):
+    if self.raw is not None:
+        with open(raw_file, 'w') as f:
+            f.write('\n'.join(self.raw))
+        print("raw data written to {}".format(raw_file))
+    else:
+        print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
         
+    def parse_raw(self, named=True):
+        '''parses the raw output from Tree of Life
+        or a file with that raw output in it'''
+        raw = self.raw
         # get nodes
         nodes_raw = []
         for i in range(len(raw)):
@@ -134,6 +166,49 @@ class phyloPlot:
         self.df = df
         self.links_list = links_list
         print("All done loading raw file.")
+
+    def write_prep_data(self, df_file, links_file):
+        '''writes the prepared nodes df and links list to files'''
+        if (self.df is None) | (self.links_list is None): 
+            print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
+        else:
+            # write
+            self.df.to_csv(df_file, index=False)
+            with open(links_file, 'w') as f:
+                f.write('\n'.join([json.dumps(l) for l in self.links_list]))
+            print("data written to {} and {}".format(df_file, links_file))
+
+    def load_prep_data(self, df_file, links_file):
+        '''reads the prepared nodes df and links list'''
+        # read
+        self.df = pd.read_csv(df_file)
+        with open(links_file, 'r') as f:
+            lines = f.read().splitlines()
+            self.links_list = [json.loads(l) for l in lines]
+
+    def return_data(self):
+        '''returns the data as df and links_list'''
+        if (self.df is None) | (self.links_list is None):
+            print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
+        else:
+            return self.df, self.links_list
+
+class phyloGraph():
+    '''
+    takes in a dataframe of nodes and a list of links
+    builds a plot and optionally publishes it to plot.ly
+    '''
+    def __init__(self, df, links_list, username=None, api_key=None):
+        self.df = df
+        self.links_list = links_list
+
+        # 
+        if (username is not None) & (api_key is not None):
+            plotly.tools.set_credentials_file(username=username, api_key=api_key)
+        elif (username is None) & (api_key is None):
+            pass
+        else:
+            print("must pass BOTH username & api_key in order to publish.")
 
     def search_name(self, search_name):
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
