@@ -6,6 +6,8 @@ An attempt to graph the evolution of life on this planet in three dimensions. In
 
 The real work is all done in `phyloGraph.py`. Some boilerplate to easily generate graphs is in `phyloGraph.ipynb`. The `-SANDBOX` notebooks are just that: dev sandboxes for ideas.
 
+Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
+
 ## To Do List
 
 * write method to pull the data from the website instead of file
