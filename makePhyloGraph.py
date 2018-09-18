@@ -53,7 +53,7 @@ if __name__ == "__main__":
         # open in browser
         pgp.open_plot()
     except:
-        print('You MUST have a plotly account with the username and api key in a file named ~/.Plotly/.Credentials for this script to work. You can go to http://plot.ly to sign up for an account. It's free.')
+        print('You MUST have a plotly account with the username and api key in a file named ~/.Plotly/.Credentials for this script to work. You can go to http://plot.ly to sign up for an account. Its free.')
 
 
 
