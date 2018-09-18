@@ -4,8 +4,9 @@ import json
 import pandas as pd
 import numpy as np
 
-import numpy as np
 from sklearn.decomposition import PCA
+
+import webbrowser
 
 import plotly
 import plotly.plotly as py
@@ -516,6 +517,10 @@ class phyloGraph():
         fig=go.Figure(data=self.plot_data, layout=self.layout)
 
         if publish:
-            py.iplot(fig, filename=filename)
+            self.plot = py.iplot(fig, filename=filename)
         else:
             iplot(fig)
+
+    def open_plot(self):
+        webbrowser.open(self.plot.resource, new=2)
+
