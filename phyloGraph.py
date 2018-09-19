@@ -17,7 +17,7 @@ import plotly.graph_objs as go
 TREE_OF_LIFE = "http://tolweb.org/onlinecontributors/app?service=external&page=xml/"
 TOL_SEARCH = "GroupSearchService&group={}"
 TOL_FETCH = "TreeStructureService&node_id={}"
-LIMIT = 100000 # limit on how many lines to fetch from Tree of Life
+LIMIT = 50000 # limit on how many lines to fetch from Tree of Life
 
 def split_stat(n, start, end):
     try:
