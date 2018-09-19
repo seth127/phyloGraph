@@ -440,8 +440,11 @@ class phyloGraph():
         for i, node in df.iterrows():
             # create text labels
             if add_links:
-                this_page_id = wikipedia.search(node['name'], results=1)[0]
-                labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(this_page_id, node['name']))
+                try:
+                    #this_page_id = wikipedia.search(node['name'], results=1)[0]
+                    labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(node['name'], node['name']))
+                except:
+                    labels.append(str(node['name']))
             else:
                 labels.append(str(node['depth']) + ' ' + node['name'])
             # create color key

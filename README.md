@@ -23,6 +23,7 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 
 ## To Do List
 
+* scrape a bunch of years and write to file so I don't have to do it every time.
 * fix kinfolk color ("group")
 * fix links disappearing when you hover to click on them (might be hard)
 * add log scale to years > 500
