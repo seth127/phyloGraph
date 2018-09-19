@@ -24,6 +24,7 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 ## To Do List
 
 * make labels only show up for highlighted nodes
+* fix kinfolk color ("group")
 * build a UI with flask or something
     * can plotly be embedded in a way that refreshes automatically?
 * function to re-render with a specific point as the root (Ideally you could click on a point and either filter or make it the root, but I don't think plotly supports that.)

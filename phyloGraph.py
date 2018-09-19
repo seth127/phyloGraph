@@ -3,10 +3,12 @@ import collections
 import json
 import pandas as pd
 import numpy as np
+import re
 
 from sklearn.decomposition import PCA
 
 import webbrowser
+import wikipedia
 
 import plotly
 import plotly.plotly as py
@@ -17,7 +19,8 @@ import plotly.graph_objs as go
 TREE_OF_LIFE = "http://tolweb.org/onlinecontributors/app?service=external&page=xml/"
 TOL_SEARCH = "GroupSearchService&group={}"
 TOL_FETCH = "TreeStructureService&node_id={}"
-LIMIT = 50000 # limit on how many lines to fetch from Tree of Life
+LIMIT = 100000 # limit on how many lines to fetch from Tree of Life
+GEO_TIME = 'geological_time.csv'
 
 def split_stat(n, start, end):
     try:
@@ -29,6 +32,60 @@ def split_stat(n, start, end):
 def rn():
     return np.random.uniform(-1,1,1)[0]
 
+def trynum(n):
+    try:
+        return float(n)
+    except:
+        return None
+
+
+def get_dates(this_query, gt):
+    """gets the earliest and latest date for an organism
+    this_query - a text sting organism name
+    gt - the geological time dataframe
+    """
+    try:
+        # get wikipedia page
+        this_page_id = wikipedia.search(this_query, results=1)[0]
+        
+        # fetch infobox
+        wiki_url = 'http://en.wikipedia.org/w/api.php?action=query&prop=revisions&rvprop=content&format=json&titles={}&rvsection=0'.format(this_page_id)
+        box_raw = json.loads(requests.get(wiki_url).content.decode('utf-8'))
+        box = next(iter(box_raw['query']['pages'].values()))['revisions'][0]['*']
+
+        # parse out fossil range
+        fr = box.split("fossil_range")[1].split('\n')[0]
+        useful = re.sub("[^A-Za-z0-9\.]+", " ", fr)
+        useful = useful.replace("Late ","Late_").replace("Middle ","Middle_").replace("Early ", "Early_").split(" ")
+        
+        # try to get actual MYA times
+        times = [trynum(n) for n in useful]
+        times = [n for n in times if n is not None]
+        if len(times) >= 2:
+            return (max(times), min(times))
+        else:
+            # parse from periods
+            dates = []
+            for u in useful:
+                ru = u.replace("Late_","").replace("Middle_","").replace("Early_", "")
+                try:
+                    this_row = list(gt[gt['Period']==ru].iloc[0])
+                    if "Late_" in u:
+                        this_dates = [this_row[2]]
+                    elif "Middle_" in u:
+                        this_dates = [np.mean(this_row[1:3])]
+                    elif "Early_" in u:
+                        this_dates = [this_row[1]]
+                    else:
+                        this_dates = this_row[1:3]
+                    dates += this_dates
+                except:
+                    pass
+            return (max(dates), min(dates))
+    except:
+        return (None, None)
+
+
 
 class phyloData:
     '''
@@ -37,7 +94,7 @@ class phyloData:
     or loads prepared data from a files.
     '''
     def __init__(self):
-        print("naw")
+        print("the data of phylo")
         self.df = None
         self.links_list = None
         self.raw = None
@@ -63,7 +120,7 @@ class phyloData:
         df, links_list = self.parse_raw(raw_search, named=False, assign=False)
         return df[['name', 'id']]
 
-    def fetch_tol_data(self, query, named=True):
+    def fetch_tol_data(self, query, named=True, limit=LIMIT):
         '''
         Fetches tree starting at specified id from Tree of Life
         '''
@@ -84,7 +141,7 @@ class phyloData:
                 elif i % 1000 == 0:
                     print('.', end='', flush=True)
                 # break after hard limit
-                if i > LIMIT:
+                if i > limit:
                     break
 
         print("\nFetched {} lines. Parsing and assigning...".format(i))
@@ -257,6 +314,34 @@ class phyloData:
             lines = f.read().splitlines()
             self.links_list = [json.loads(l) for l in lines]
 
+    def add_time(self):
+        # load geological time data
+        self.gt = pd.read_csv(GEO_TIME)
+        
+        # fill time each organism
+        self.df['Begin'] = None
+        self.df['End'] = None
+        for i, row in self.df.iterrows():
+            d = get_dates(row['name'], self.gt)
+            # if nothing, look up ancestor
+            #if not all(d):
+            #    a = (int(self.df.loc[self.df['id']==row['ancestor']]['Begin']), \
+            #        int(self.df.loc[self.df['id']==row['ancestor']]['End']))
+            #    if all(a):
+            #        d = (np.mean(a), a[1])
+            #    else:
+            #        d = (None, None)
+            #    ##### THIS NEEDS TO BE INSIDE A TRY, MAYBE NEED TO MOVE get_names() INTO THE MODULE AND PUT THIS INSIDE IT
+
+            self.df.at[i,'Begin'] = d[0]
+            self.df.at[i,'End'] = d[1]
+
+            if i % 100 == 0:
+                print(i, end='', flush=True)
+            elif i % 10 == 0:
+                print('.', end='', flush=True)
+
+
     def return_data(self):
         '''returns the data as df and links_list'''
         if (self.df is None) | (self.links_list is None):
@@ -270,9 +355,9 @@ class phyloGraph():
     builds a plot and optionally publishes it to plot.ly
     '''
     def __init__(self, df, links_list, username=None, api_key=None):
+        print("the plotting of phylo")
         self.df = df
         self.links_list = links_list
-
         # 
         if (username is not None) & (api_key is not None):
             plotly.tools.set_credentials_file(username=username, api_key=api_key)
@@ -448,8 +533,7 @@ class phyloGraph():
                                      opacity=0.6,
                                      colorscale='Viridis'
                                      ),
-                       text=labels,
-                       hoverinfo='text'
+                       hoverinfo='skip'
                        )
 
         # kinfolk nodes
