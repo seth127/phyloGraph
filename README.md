@@ -23,12 +23,15 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 
 ## To Do List
 
-* make labels only show up for highlighted nodes
 * fix kinfolk color ("group")
+* fix links disappearing when you hover to click on them (might be hard)
+* add log scale to years > 500
+    * also add a max years and cap there (+ some small multiplier so the dots aren't on top of each other)
 * build a UI with flask or something
     * can plotly be embedded in a way that refreshes automatically?
 * function to re-render with a specific point as the root (Ideally you could click on a point and either filter or make it the root, but I don't think plotly supports that.)
 * write a wrapper to filter on an id and re-render the plot
-* make the plot Z-dim by year of appearance instead of just generations
 * have some smarter X- and Y-dims (maybe?)
+    * would be awesome to scrape classification stuff from wikipedia and the PCA it, but having trouble getting it from infobox. 
+    * Could maybe just tokenize whatever's in the infobox and PCA that.
 

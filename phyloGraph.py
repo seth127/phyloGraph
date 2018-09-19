@@ -375,7 +375,8 @@ class phyloGraph():
                          max_depth = 20,
                          color_attr = 'extinct',
                          Z_dim = 'depth',
-                         Z_dim_mult = -1):
+                         Z_dim_mult = -1,
+                         add_links = False):
         ''''''
         if highlight == 'all':
             pick = self.df.ix[0, 'id']
@@ -438,7 +439,11 @@ class phyloGraph():
         layt = []
         for i, node in df.iterrows():
             # create text labels
-            labels.append(str(node['depth']) + ' ' + node['name'])
+            if add_links:
+                this_page_id = wikipedia.search(node['name'], results=1)[0]
+                labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(this_page_id, node['name']))
+            else:
+                labels.append(str(node['depth']) + ' ' + node['name'])
             # create color key
             group.append(node[color_attr])
             # create opacity key
