@@ -374,7 +374,8 @@ class phyloGraph():
                          max_nodes = 5000,
                          max_depth = 20,
                          color_attr = 'extinct',
-                         Z_dim = 'depth'):
+                         Z_dim = 'depth',
+                         Z_dim_mult = -1):
         ''''''
         if highlight == 'all':
             pick = self.df.ix[0, 'id']
@@ -448,7 +449,7 @@ class phyloGraph():
             # # layt.append(list(X_pca[i]) + [d * -1])
             layt.append([node['x'], 
                          node['y'], 
-                         (d*-1)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         (d*Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
             
 
         #print(labels[:3])
