@@ -1,9 +1,13 @@
 Period,Begin,End,Length
+Present,0,0,0
+Recent,0,0,0
 Phanerozoic,541,0,541
 Cenozoic,66,0,66
 Mesozoic,252,66,186
 Mesoproterozoic,1600,1000,600
 Paleozoic,541,252,289
+Llandovery,443.7,428.2,15
+Silurian,443.7,419,24
 Paleoproterozoic,2500,1600,900
 Proterozoic,2500,541,1959
 Neoproterozoic,541,1000,659

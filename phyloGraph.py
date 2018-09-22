@@ -54,7 +54,7 @@ def get_dates(this_query, gt):
         box = next(iter(box_raw['query']['pages'].values()))['revisions'][0]['*']
 
         # parse out fossil range
-        fr = box.split("fossil_range")[1].split('\n')[0]
+        fr = box.split("fossil_range")[-1].split('\n')[0].split('<ref')[0]
         useful = re.sub("[^A-Za-z0-9\.]+", " ", fr)
         useful = useful.replace("Late ","Late_").replace("Middle ","Middle_").replace("Early ", "Early_").split(" ")
         
@@ -62,7 +62,7 @@ def get_dates(this_query, gt):
         times = [trynum(n) for n in useful]
         times = [n for n in times if n is not None]
         if len(times) >= 2:
-            return (max(times), min(times))
+            return (np.round(max(times),3), np.round(min(times),3))
         else:
             # parse from periods
             dates = []
@@ -81,9 +81,9 @@ def get_dates(this_query, gt):
                     dates += this_dates
                 except:
                     pass
-            return (max(dates), min(dates))
+            return (np.round(max(dates),3), np.round(min(dates),3))
     except:
-        return (None, None)
+        return (None, None), box
 
 
 
@@ -314,15 +314,24 @@ class phyloData:
             lines = f.read().splitlines()
             self.links_list = [json.loads(l) for l in lines]
 
-    def add_time(self):
+    def add_time(self, write=False, keep_text=False):
+        '''
+        gets organism age from wikipedia, but it's pretty slow
+        optionally pass a filepath to `write` to write to csv every 100 iterations
+        '''
         # load geological time data
         self.gt = pd.read_csv(GEO_TIME)
+
+        # create dataframe for free text
+        if keep_text:
+            box_df = self.df[['id', 'name']].copy()
+            box_df['text'] = None
         
         # fill time each organism
         self.df['Begin'] = None
         self.df['End'] = None
         for i, row in self.df.iterrows():
-            d = get_dates(row['name'], self.gt)
+            d, box = get_dates(row['name'], self.gt)
             # if nothing, look up ancestor
             #if not all(d):
             #    a = (int(self.df.loc[self.df['id']==row['ancestor']]['Begin']), \
@@ -336,8 +345,17 @@ class phyloData:
             self.df.at[i,'Begin'] = d[0]
             self.df.at[i,'End'] = d[1]
 
+            if keep_text:
+                box_df.at[i, 'text'] = box
+
             if i % 100 == 0:
                 print(i, end='', flush=True)
+                if write:
+                    self.df.to_csv(write, index=False)
+                    if keep_text:
+                        box_df.to_csv(write.replace(".csv", "-text.csv"), 
+                                      index=False,
+                                      sep="~~~")
             elif i % 10 == 0:
                 print('.', end='', flush=True)
 
