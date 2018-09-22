@@ -38,6 +38,18 @@ def trynum(n):
     except:
         return None
 
+def get_descendants(pick, links_dict):
+    '''get all descendants from an id'''
+    kids = []
+    this_gen = links_dict[pick]['children']
+    while len(this_gen) > 0:
+        kids += this_gen
+        next_gen = []
+        for c in this_gen:
+            next_gen += links_dict[c]['children']
+        this_gen = next_gen
+    #
+    return kids
 
 def get_dates(this_query, gt):
     """gets the earliest and latest date for an organism
@@ -409,33 +421,37 @@ class phyloGraph():
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
 
     def create_plot_data(self, 
-                         highlight = 'all',
-                         max_nodes = 5000,
-                         max_depth = 20,
+                         root = 15040, # mammals
+                         focus = 'all',
                          color_attr = 'extinct',
                          Z_dim = 'depth',
+                         max_nodes = 50000,
+                         max_depth = 50,
                          Z_dim_mult = -1,
                          add_links = False):
         ''''''
-        if highlight == 'all':
-            pick = self.df.ix[0, 'id']
-        else:
-            pick = highlight
-
         # subset to max_nodes and max_depth
         df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
         df = df.reset_index()
 
-        # get kinfolk
+        # subset to only children of the root
+        keepers = [root]
+        keepers += get_descendants(root, self.links_dict)
+        df = df[df['id'].isin(keepers)]
+        df = df.reset_index()
+
+        # select node to focus on 
+        if focus == 'all':
+            pick = root
+        else:
+            pick = focus
+
+        # get kinfolk of focus node
         kin = [pick]
         # add parents
         kin += self.links_dict[pick]['parents']
         # add kids
-        kin += self.links_dict[pick]['children']
-        # add kids' kids
-        for c in self.links_dict[pick]['children']:
-            kin += self.links_dict[c]['children']
-        kin = list(set(kin))
+        kin += get_descendants(pick, self.links_dict)
 
         # subset
         df['kin'] = 0
@@ -444,24 +460,14 @@ class phyloGraph():
         ###############
         ### NEED TO CREATE LINKS_LIST HERE
         ## create links list
-        #links_list = []
-        #for i, n in df.iterrows():
-        #    links_list.append({
-        #        'source': n['id'], 
-        #        'target': n['ancestor'], 
-        #        'value': n['num_kids']
-        #    })
         links_list = []
-        for n, val in self.links_dict.items():
-            try:
-                links_list.append({
-                    'source': n, 
-                    'target': val['parents'][0], 
-                    'value': len(val['children'])
-                })
-            except:
-                print("NO PARENTS -- {} : {}".format(n, val))
-        
+        for i, n in df.iterrows():
+            links_list.append({
+                'source': n['id'], 
+                'target': n['ancestor'], 
+                'value': n['num_kids']
+            })
+
         #print("len(links_list): {}".format(len(links_list)))
         #print("first 3 links: {}".format(links_list[:3]))
 
