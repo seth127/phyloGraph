@@ -489,11 +489,11 @@ class phyloGraph():
                 if add_links:
                     try:
                         #this_page_id = wikipedia.search(node['name'], results=1)[0]
-                        labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(node['name'], node['name']))
+                        labels.append('<a href="https://en.wikipedia.org/wiki/{}">{} ({} MYA)</a>'.format(node['name'], node['name'], node['Begin']))
                     except:
                         labels.append(str(node['name']))
                 else:
-                    labels.append(str(node['depth']) + ' ' + node['name'])
+                    labels.append("{} ({} MYA)".format(node['name'], node['Begin']))
             # create color key
             group.append(node[color_attr])
             # create opacity key
