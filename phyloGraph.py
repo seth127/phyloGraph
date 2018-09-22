@@ -431,6 +431,8 @@ class phyloGraph():
         # add parents
         kin += self.links_dict[pick]['parents']
         # add kids
+        kin += self.links_dict[pick]['children']
+        # add kids' kids
         for c in self.links_dict[pick]['children']:
             kin += self.links_dict[c]['children']
         kin = list(set(kin))
@@ -442,18 +444,27 @@ class phyloGraph():
         ###############
         ### NEED TO CREATE LINKS_LIST HERE
         ## create links list
+        #links_list = []
+        #for i, n in df.iterrows():
+        #    links_list.append({
+        #        'source': n['id'], 
+        #        'target': n['ancestor'], 
+        #        'value': n['num_kids']
+        #    })
         links_list = []
-        for i, n in df.iterrows():
-            links_list.append({
-                'source': n['id'], 
-                'target': n['ancestor'], 
-                'value': n['num_kids']
-            })
+        for n, val in self.links_dict.items():
+            try:
+                links_list.append({
+                    'source': n, 
+                    'target': val['parents'][0], 
+                    'value': len(val['children'])
+                })
+            except:
+                print("NO PARENTS -- {} : {}".format(n, val))
         
         #print("len(links_list): {}".format(len(links_list)))
         #print("first 3 links: {}".format(links_list[:3]))
 
-        #links_list = [l for l in links_list if l['target'] in list(df['id'])]
         L=len(links_list)
         #print("len(links_list): {}".format(L))
 
@@ -468,14 +479,15 @@ class phyloGraph():
         layt = []
         for i, node in df.iterrows():
             # create text labels
-            if add_links:
-                try:
-                    #this_page_id = wikipedia.search(node['name'], results=1)[0]
-                    labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(node['name'], node['name']))
-                except:
-                    labels.append(str(node['name']))
-            else:
-                labels.append(str(node['depth']) + ' ' + node['name'])
+            if node['kin'] == 1: #### only labeling kinfolk
+                if add_links:
+                    try:
+                        #this_page_id = wikipedia.search(node['name'], results=1)[0]
+                        labels.append('<a href="https://en.wikipedia.org/wiki/{}">{}</a>'.format(node['name'], node['name']))
+                    except:
+                        labels.append(str(node['name']))
+                else:
+                    labels.append(str(node['depth']) + ' ' + node['name'])
             # create color key
             group.append(node[color_attr])
             # create opacity key
