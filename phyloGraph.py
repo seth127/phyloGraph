@@ -62,7 +62,7 @@ def get_dates(this_query, gt):
         times = [trynum(n) for n in useful]
         times = [n for n in times if n is not None]
         if len(times) >= 2:
-            return (np.round(max(times),3), np.round(min(times),3))
+            d = (np.round(max(times),3), np.round(min(times),3))
         else:
             # parse from periods
             dates = []
@@ -81,9 +81,13 @@ def get_dates(this_query, gt):
                     dates += this_dates
                 except:
                     pass
-            return (np.round(max(dates),3), np.round(min(dates),3))
+            d = (np.round(max(dates),3), np.round(min(dates),3))
     except:
-        return (None, None), box
+        d = (None, None)
+        box = ''
+    # return output
+    box_text = re.sub("[^A-Za-z]+", " ", box).lower()
+    return d, box_text
 
 
 
@@ -96,7 +100,6 @@ class phyloData:
     def __init__(self):
         print("the data of phylo")
         self.df = None
-        self.links_list = None
         self.raw = None
 
     def search_name(self, query):
@@ -117,7 +120,7 @@ class phyloData:
                 if i > LIMIT:
                     break
         # parse and return
-        df, links_list = self.parse_raw(raw_search, named=False, assign=False)
+        df = self.parse_raw(raw_search, named=False, assign=False)
         return df[['name', 'id']]
 
     def fetch_tol_data(self, query, named=True, limit=LIMIT):
@@ -158,7 +161,7 @@ class phyloData:
             raw = f.read().split('\n')
         #print("{} lines in raw file".format(len(raw)))
         self.raw = raw
-        # parse to df and links_list
+        # parse to df
         parse_raw(self.raw, named=named)
         print("All done. {} organisms fetched.".format(self.df.shape[0]))
 
@@ -175,7 +178,7 @@ class phyloData:
         or a file with that raw output in it
 
         if assign=False this function returns the 
-        df and links_list instead of assigning them to self'''
+        df instead of assigning them to self'''
         # get nodes
         nodes_raw = []
         for i in range(len(raw)):
@@ -267,18 +270,6 @@ class phyloData:
                 nodes_list[i]['x'] = parent[0]['x'] + (rn() * depth_mult)
                 nodes_list[i]['y'] = parent[0]['y'] + (rn() * depth_mult)
 
-        # create links list
-        links_list = []
-        for n in nodes_list:
-            links_list.append({
-                'source': n['id'], 
-                'target': n['ancestor'], 
-                'value': n['num_kids']
-            })
-
-        #print("len(links_list): {}".format(len(links_list)))
-        #print("first 3 links: {}".format(links_list[:3]))
-
         # pred df
         df = pd.DataFrame(nodes_list)
         #print("df.head():\n{}".format(df.head()))
@@ -289,30 +280,24 @@ class phyloData:
         #
         if assign:
             self.df = df
-            self.links_list = links_list
         else:
-            return df, links_list
+            return df
 
         #print("All done parsing raw input.")
 
     def write_prep_data(self, df_file, links_file):
         '''writes the prepared nodes df and links list to files'''
-        if (self.df is None) | (self.links_list is None): 
+        if self.df is None: 
             print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
         else:
             # write
             self.df.to_csv(df_file, index=False)
-            with open(links_file, 'w') as f:
-                f.write('\n'.join([json.dumps(l) for l in self.links_list]))
-            print("data written to {} and {}".format(df_file, links_file))
+            print("data written to {}".format(df_file))
 
-    def load_prep_data(self, df_file, links_file):
+    def load_prep_data(self, df_file):
         '''reads the prepared nodes df and links list'''
         # read
         self.df = pd.read_csv(df_file)
-        with open(links_file, 'r') as f:
-            lines = f.read().splitlines()
-            self.links_list = [json.loads(l) for l in lines]
 
     def add_time(self, write=False, keep_text=False):
         '''
@@ -353,36 +338,72 @@ class phyloData:
                 if write:
                     self.df.to_csv(write, index=False)
                     if keep_text:
-                        box_df.to_csv(write.replace(".csv", "-text.csv"), 
-                                      index=False,
-                                      sep="~~~")
+                        box_df.to_csv(write.replace(".csv", "-text.csv"), index=False)
             elif i % 10 == 0:
                 print('.', end='', flush=True)
 
 
     def return_data(self):
-        '''returns the data as df and links_list'''
-        if (self.df is None) | (self.links_list is None):
+        '''returns the data as df'''
+        if self.df is None:
             print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
         else:
-            return self.df, self.links_list
+            return self.df
 
 class phyloGraph():
     '''
     takes in a dataframe of nodes and a list of links
     builds a plot and optionally publishes it to plot.ly
     '''
-    def __init__(self, df, links_list, username=None, api_key=None):
+    def __init__(self, df, username=None, api_key=None):
         print("the plotting of phylo")
+        # load df
         self.df = df
-        self.links_list = links_list
-        # 
+        # connect to plot.ly
         if (username is not None) & (api_key is not None):
             plotly.tools.set_credentials_file(username=username, api_key=api_key)
         elif (username is None) & (api_key is None):
             pass
         else:
             print("must pass BOTH username & api_key in order to publish.")
+
+        # create links_dict
+        links_dict = {}
+        for i, this_row in df.iterrows():
+            this_id = int(this_row['id'])
+            # get parents
+            if isinstance(this_row['ancestor'], int):
+                parents = [this_row['ancestor']]
+            else:
+                parents = list(this_row['ancestor'])
+                print(this_row)
+            # add parents
+            try:
+                # add parents if the id already exists
+                links_dict[this_id]['parents'] += parents
+                # filter to only unique
+                links_dict[this_id]['parents'] = list(set(links_dict[this_id]['parents']))
+            except KeyError:
+                # add this_id
+                links_dict[this_id] = {}
+                # add parent to this_id
+                links_dict[this_id]['parents'] = parents
+                links_dict[this_id]['children'] = []
+
+            # add as child to parent node
+            for parent in parents:
+                try:
+                    # add as child if parent node already exists
+                    links_dict[parent]['children'].append(this_id)
+                except KeyError:
+                    # if not, create parent node and add as child
+                    links_dict[parent] = {}
+                    links_dict[parent]['children'] = [this_id]
+                    links_dict[parent]['parents'] = []
+                # filter to only unique
+                links_dict[parent]['children'] = list(set(links_dict[parent]['children']))
+
+        self.links_dict = links_dict
 
     def search_name(self, search_name):
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
@@ -406,43 +427,33 @@ class phyloGraph():
         df = df.reset_index()
 
         # get kinfolk
-        ma = int(df['ancestor'][df['id'] == pick])
-        #print("ma: {}".format(ma))
-        ancestors = []
-
-        this_id = pick
-        for i in range(max_depth):
-            this_row = df[df['id'] == this_id]
-            if this_row.shape[0] == 0:
-                break
-            else:
-                this_ancestor = int(this_row['ancestor'])
-                ancestors.append(this_ancestor)
-                this_id = this_ancestor
-            
-        #print("{} ancestors".format(ancestors))
-
         kin = [pick]
-
-        # add descendants
-        for i, row in df.iterrows():
-            if int(row['ancestor']) in kin:
-                kin.append(int(row['id']))
-
-        # add siblings
-        for i, row in df.iterrows():
-            if int(row['ancestor']) == ma:
-                kin.append(int(row['id']))
-
-        # add ancestors
-        kin += ancestors
-        #print(len(kin))
+        # add parents
+        kin += self.links_dict[pick]['parents']
+        # add kids
+        for c in self.links_dict[pick]['children']:
+            kin += self.links_dict[c]['children']
+        kin = list(set(kin))
 
         # subset
         df['kin'] = 0
         df['kin'][df['id'].isin(kin)] = 1
 
-        links_list = [l for l in self.links_list if l['target'] in list(df['id'])]
+        ###############
+        ### NEED TO CREATE LINKS_LIST HERE
+        ## create links list
+        links_list = []
+        for i, n in df.iterrows():
+            links_list.append({
+                'source': n['id'], 
+                'target': n['ancestor'], 
+                'value': n['num_kids']
+            })
+        
+        #print("len(links_list): {}".format(len(links_list)))
+        #print("first 3 links: {}".format(links_list[:3]))
+
+        #links_list = [l for l in links_list if l['target'] in list(df['id'])]
         L=len(links_list)
         #print("len(links_list): {}".format(L))
 

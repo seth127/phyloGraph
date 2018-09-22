@@ -12,21 +12,28 @@ parser.add_argument("--root", type=int, help="id to start from")
 parser.add_argument("--name", type=str, default='name', help="name of organism to start with (for file naming).")
 parser.add_argument("--max_raw", type=int, default=1000000, help="max number of raw lines to fetch from Tree of Life")
 parser.add_argument("--keep_text", action="store_true", help="whether to also write out the free text of the infobox.")
+parser.add_argument("--from_noage", action="store_true", help="optionally skip the tree of life phase by passing a noage file")
 
 args = parser.parse_args()
 
 # load data object
 pgd = ph.phyloData()
 
-# fetch from Tree of Life
-start = time()
-print("Fetching from Tree of Life :: {}".format(datetime.now()))
-pgd.fetch_tol_data(args.root, limit=args.max_raw)
-print("Done fetching in {} secs".format(np.round(time() - start, 0)))
-
+# get noage data
 noage_name = "data/{}-{}-noage.csv".format(args.name, args.root)
-pgd.df.to_csv(noage_name, index=False)
-print("saved to {}".format(noage_name))
+if args.from_noage:
+    pgd.df = pd.read_csv(noage_name)
+    print("loaded from {}".format(noage_name))
+    print(pgd.df.shape)
+else:
+    # fetch from Tree of Life
+    start = time()
+    print("Fetching from Tree of Life :: {}".format(datetime.now()))
+    pgd.fetch_tol_data(args.root, limit=args.max_raw)
+    print("Done fetching in {} secs".format(np.round(time() - start, 0)))
+
+    pgd.df.to_csv(noage_name, index=False)
+    print("saved to {}".format(noage_name))
 
 # get age from wikipedia
 print("Getting age :: {}".format(datetime.now()))
