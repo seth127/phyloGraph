@@ -488,8 +488,12 @@ class phyloGraph():
             self.plot_df['log_time'] = np.log1p(self.plot_df['Begin'])
 
         elif mode == 'focus':
-            # add parents
-            keepers += self.links_dict[pick]['parents']
+            # add ancestors
+            parent = self.links_dict[pick]['parents']
+            while len(parent) > 0:
+                keepers += parent
+                parent = self.links_dict[parent[0]]['parents']
+
             # add kin column
             self.plot_df['kin'] = 0
             self.plot_df['kin'][self.plot_df['id'].isin(keepers)] = 1
