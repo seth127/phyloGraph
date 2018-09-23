@@ -22,10 +22,13 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
-
+* separate create_plot_data() from focus_plot_data()
+    * build trace1 and trace2 once
+    * then only rebuild the k traces when we re-focus
+* show small labels for non-focus nodes
 * fix year (i.e. 2017 for Chrotomys) getting parsed into age
 * make focus following parentage all the way back to root
-* investigate the begin_nage * 0.95 thing not totally working (Gorilla and Hominidae for instance)
+* investigate the begin_age * 0.95 thing not totally working (Gorilla and Hominidae for instance)
 * add single focus mode
     * pass focus and no root and root auto becomes great-grandparent of focus.
 * have some smarter X- and Y-dims (maybe?)

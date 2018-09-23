@@ -408,25 +408,43 @@ class phyloGraph():
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
 
     def fix_age(self, c):
-        #c = this_row['id']
+        print_list = [50754, 50747, 50749, 50750, 50752, 50769, 50767, 50760, 50746, 52428, 16572]
+        #
         this_row = self.plot_df[self.plot_df['id']==c].squeeze()
         this_age = this_row['Begin']
         parent = self.links_dict[c]['parents']
         parent_df = self.plot_df[self.plot_df['id'].isin(parent)]
         begin_age = float(parent_df['Begin'])
         #
-        if (np.isnan(this_age)) | (this_age > (begin_age * 0.95)):
+        
+        if c in print_list:
+        #if (this_age > (self.root_age * 0.95)):
+            print(this_row[['id', 'name', 'Begin', 'End']])
+            print("    links_dict: {}".format(self.links_dict[c]))
+            print("    parent: {}".format(parent_df[['id', 'name', 'Begin', 'End']]))
+            print("    begin_age: {}".format(begin_age))
+        #
+        # if there's an issue, fix it
+        if (np.isnan(this_age)) \
+           | (this_age > (begin_age * 0.95)) \
+           | (this_age > (self.root_age * 0.95)):
             kids = self.links_dict[c]['children']
             if len(kids) > 0:
                 kids_df = self.plot_df[self.plot_df['id'].isin(kids)]
+
                 kids_max = np.nanmax(np.array(kids_df['Begin']))
-                if np.isnan(kids_max):
-                    end_age = float(parent_df['Begin'])
+                if (np.isnan(kids_max)) | (kids_max >= begin_age):
+                    #print('ALL-NAN - {} : {}'.format(c, self.links_dict[c]))
+                    end_age = float(parent_df['End'])
                 else:
                     end_age = kids_max
             else:
                 end_age = float(parent_df['End'])
             #
+            if c in print_list:
+                print("    end_age: {}".format(end_age))
+                print("    begin_mean: {}".format(np.mean([begin_age, end_age])))
+                print("$$$$$$$$$$$$$")
             self.plot_df.at[self.plot_df['id']==c, 'Begin'] = np.mean([begin_age, end_age])
             self.plot_df.at[self.plot_df['id']==c, 'End'] = end_age
 
@@ -484,10 +502,10 @@ class phyloGraph():
                          root = 15040, # mammals
                          focus = 'all',
                          color_attr = 'extinct',
-                         Z_dim = 'depth',
+                         Z_dim = 'log_time',
+                         Z_dim_mult = 1, # set to -1 if using 'depth' for Z_dim
                          max_nodes = 50000,
                          max_depth = 50,
-                         Z_dim_mult = -1,
                          add_links = False):
         ''''''
         # subset to max_nodes and max_depth
@@ -496,6 +514,7 @@ class phyloGraph():
         ### PUT THIS ^ IN get_descendants()
 
         # subset to only children of the root
+        self.root_age = self.df[self.df['id'] == root].squeeze()['Begin']
         self.get_descendants(root, mode='filter')
 
         # select node to focus on 
