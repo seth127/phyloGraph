@@ -38,19 +38,6 @@ def trynum(n):
     except:
         return None
 
-def get_descendants(pick, links_dict):
-    '''get all descendants from an id'''
-    kids = []
-    this_gen = links_dict[pick]['children']
-    while len(this_gen) > 0:
-        kids += this_gen
-        next_gen = []
-        for c in this_gen:
-            next_gen += links_dict[c]['children']
-        this_gen = next_gen
-    #
-    return kids
-
 def get_dates(this_query, gt):
     """gets the earliest and latest date for an organism
     this_query - a text sting organism name
@@ -420,6 +407,67 @@ class phyloGraph():
     def search_name(self, search_name):
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
 
+    def fix_age(self, i, this_row):
+        c = this_row['id']
+        this_age = this_row['Begin']
+        parent = self.links_dict[c]['parents']
+        parent_df = self.plot_df[self.plot_df['id'].isin(parent)]
+        begin_age = float(parent_df['Begin'])
+        #
+        if (np.isnan(this_age)) | (this_age > (begin_age * 0.95)):
+            kids = self.links_dict[c]['children']
+            if len(kids) > 0:
+                kids_df = self.plot_df[self.plot_df['id'].isin(kids)]
+                kids_max = np.nanmax(np.array(kids_df['Begin']))
+                if np.isnan(kids_max):
+                    end_age = float(parent_df['Begin'])
+                else:
+                    end_age = kids_max
+            else:
+                end_age = kids_max
+            #
+            self.plot_df.at[i,'Begin'] = np.mean(begin_age, end_age)
+            self.plot_df.at[i,'End'] = end_age
+
+    def get_descendants(self, pick, mode):
+        '''get all descendants from an id
+        mode can be either:
+            'filter' - filters self.df to all descendants of pick
+            'focus' - creates 'kin' column and assigns 1 to descendants and parents and 0 to all others
+        '''
+        # get descendants
+        kids = []
+        this_gen = self.links_dict[pick]['children']
+        while len(this_gen) > 0:
+            kids += this_gen
+            next_gen = []
+            for c in this_gen:
+                next_gen += self.links_dict[c]['children']
+            this_gen = next_gen
+        # 
+        keepers = [pick]
+        keepers += kids
+        #
+        if mode == 'filter':
+            self.plot_df = self.df[self.df['id'].isin(keepers)]
+            self.plot_df = self.plot_df.reset_index()
+            # add log time
+            self.plot_df['log_time'] = np.log1p(self.plot_df['Begin'])
+            # fix ages
+            for i, this_row in self.plot_df.iterrows():
+                self.fix_age(i, this_row)
+
+        elif mode == 'focus':
+            # add parents
+            keepers += self.links_dict[pick]['parents']
+            # add kin column
+            self.plot_df['kin'] = 0
+            self.plot_df['kin'][self.plot_df['id'].isin(keepers)] = 1
+            # return list of kin
+            return keepers
+        else:
+            print("FAILURE: get_descendants(mode) only valid options are 'filter' and 'focus'")
+
     def create_plot_data(self, 
                          root = 15040, # mammals
                          focus = 'all',
@@ -431,14 +479,12 @@ class phyloGraph():
                          add_links = False):
         ''''''
         # subset to max_nodes and max_depth
-        df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
-        df = df.reset_index()
+        #df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
+        #df = df.reset_index()
+        ### PUT THIS ^ IN get_descendants()
 
         # subset to only children of the root
-        keepers = [root]
-        keepers += get_descendants(root, self.links_dict)
-        df = df[df['id'].isin(keepers)]
-        df = df.reset_index()
+        self.get_descendants(root, mode='filter')
 
         # select node to focus on 
         if focus == 'all':
@@ -447,21 +493,11 @@ class phyloGraph():
             pick = focus
 
         # get kinfolk of focus node
-        kin = [pick]
-        # add parents
-        kin += self.links_dict[pick]['parents']
-        # add kids
-        kin += get_descendants(pick, self.links_dict)
+        kin = self.get_descendants(pick, mode='focus')
 
-        # subset
-        df['kin'] = 0
-        df['kin'][df['id'].isin(kin)] = 1
-
-        ###############
-        ### NEED TO CREATE LINKS_LIST HERE
         ## create links list
         links_list = []
-        for i, n in df.iterrows():
+        for i, n in self.plot_df.iterrows():
             links_list.append({
                 'source': n['id'], 
                 'target': n['ancestor'], 
@@ -483,7 +519,7 @@ class phyloGraph():
         group=[]
         alpha = []
         layt = []
-        for i, node in df.iterrows():
+        for i, node in self.plot_df.iterrows():
             # create text labels
             if node['kin'] == 1: #### only labeling kinfolk
                 if add_links:
@@ -534,11 +570,11 @@ class phyloGraph():
         Zek=[]
         for e in Edges:
             try: 
-                e0 = df[df['id'] == e[0]].index.values[0]
+                e0 = self.plot_df[self.plot_df['id'] == e[0]].index.values[0]
             except:
                 e0 = 0
             try:
-                e1 = df[df['id'] == e[1]].index.values[0]
+                e1 = self.plot_df[self.plot_df['id'] == e[1]].index.values[0]
             except:
                 e1 = 0
             #
@@ -555,8 +591,8 @@ class phyloGraph():
         #print(len(Zek))
 
         # make traces
-        this_title = df.loc[0, 'name']
-        this_text = df.loc[df['id']==pick]['name'].values[0]
+        this_title = self.plot_df.loc[0, 'name']
+        this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
 
         # lines
         trace1=go.Scatter3d(x=Xe,
