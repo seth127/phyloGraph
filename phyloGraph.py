@@ -407,8 +407,9 @@ class phyloGraph():
     def search_name(self, search_name):
         print(self.df[self.df['name'].str.contains(search_name)][['name', 'id']])
 
-    def fix_age(self, i, this_row):
-        c = this_row['id']
+    def fix_age(self, c):
+        #c = this_row['id']
+        this_row = self.plot_df[self.plot_df['id']==c].squeeze()
         this_age = this_row['Begin']
         parent = self.links_dict[c]['parents']
         parent_df = self.plot_df[self.plot_df['id'].isin(parent)]
@@ -424,10 +425,10 @@ class phyloGraph():
                 else:
                     end_age = kids_max
             else:
-                end_age = kids_max
+                end_age = float(parent_df['End'])
             #
-            self.plot_df.at[i,'Begin'] = np.mean(begin_age, end_age)
-            self.plot_df.at[i,'End'] = end_age
+            self.plot_df.at[self.plot_df['id']==c, 'Begin'] = np.mean([begin_age, end_age])
+            self.plot_df.at[self.plot_df['id']==c, 'End'] = end_age
 
     def get_descendants(self, pick, mode):
         '''get all descendants from an id
@@ -451,11 +452,22 @@ class phyloGraph():
         if mode == 'filter':
             self.plot_df = self.df[self.df['id'].isin(keepers)]
             self.plot_df = self.plot_df.reset_index()
+            # fix ages
+            this_gen = self.links_dict[pick]['children']
+            #depth = 0
+            while len(this_gen) > 0:
+                #depth += 1
+                next_gen = []
+                for c in this_gen:
+                    self.fix_age(c)
+                    #
+                    next_gen += self.links_dict[c]['children']
+                #if depth >= max_depth:
+                #    break
+                #else:
+                this_gen = next_gen
             # add log time
             self.plot_df['log_time'] = np.log1p(self.plot_df['Begin'])
-            # fix ages
-            for i, this_row in self.plot_df.iterrows():
-                self.fix_age(i, this_row)
 
         elif mode == 'focus':
             # add parents
