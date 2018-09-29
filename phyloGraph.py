@@ -542,7 +542,11 @@ class phyloGraph():
             parent = self.links_dict[pick]['parents']
             while len(parent) > 0:
                 keepers += parent
+                # add parent's other kids
+                keepers += self.links_dict[parent[0]]['children']
+                # check the next one
                 parent = self.links_dict[parent[0]]['parents']
+
 
             # add kin column
             self.plot_df['kin'] = 0
