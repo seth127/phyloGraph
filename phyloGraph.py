@@ -11,6 +11,7 @@ from sklearn.manifold import TSNE
 
 import webbrowser
 import wikipedia
+from bs4 import BeautifulSoup
 
 import plotly
 import plotly.plotly as py
@@ -40,8 +41,66 @@ def trynum(n):
     except:
         return None
 
+def get_dates_and_cf(this_query, gt):
+    """"""
+    try:
+        # get wikipedia page
+        this_page_id = wikipedia.search(this_query, results=1)[0]
+        wiki_url = "https://en.wikipedia.org/wiki/{}".format(this_page_id)
+        res = requests.get(wiki_url).content.decode('utf-8')
+        soup = BeautifulSoup(res, "lxml")
+        
+        # get infobox
+        table = soup.find("table", {"class":"infobox biota"})
+
+        # get classification text
+        rows = table.findAll(lambda tag: tag.name=='td')
+        cf_text = [re.sub("[^A-Za-z]+", " ", td.text).lower() for td in rows]
+        cf_text = ' '.join(cf_text + [this_query.lower()])
+
+        # get dates section
+        divs = table.findAll(lambda tag: tag.name=='div')
+        date_text = ' '.join([div.text.replace('\n', ' ') for div in divs])
+        date_text = re.sub("\[[0-9]\]", "", date_text) # remove links
+        useful = re.sub("[^A-Za-z0-9]", " ", date_text) # remove other stuff
+        useful = useful.replace("Late ","Late_").replace("Middle ","Middle_").replace("Early ", "Early_").split(" ")
+
+        # parse dates
+        times = [trynum(n) for n in useful]
+        times = [n for n in times if n is not None]
+        if len(times) >= 2:
+            d = (np.round(max(times),3), np.round(min(times),3))
+        else:
+            # parse from periods
+            dates = []
+            for u in useful:
+                ru = u.replace("Late_","").replace("Middle_","").replace("Early_", "")
+                try:
+                    this_row = list(gt[gt['Period']==ru].iloc[0])
+                    if "Late_" in u:
+                        this_dates = [this_row[2]]
+                    elif "Middle_" in u:
+                        this_dates = [np.mean(this_row[1:3])]
+                    elif "Early_" in u:
+                        this_dates = [this_row[1]]
+                    else:
+                        this_dates = this_row[1:3]
+                    dates += this_dates
+                except:
+                    pass
+            d = (np.round(max(dates),3), np.round(min(dates),3))
+
+    except:
+        d = (None, None)
+        cf_text = ''
+    # return output
+    return d, cf_text
+
 def get_dates(this_query, gt):
-    """gets the earliest and latest date for an organism
+    """
+    DEPRECATED!!! this was my first try
+    ----
+    gets the earliest and latest date for an organism
     this_query - a text sting organism name
     gt - the geological time dataframe
     """
@@ -317,22 +376,14 @@ class phyloData:
         self.df['Begin'] = None
         self.df['End'] = None
         for i, row in self.df.iterrows():
-            d, box = get_dates(row['name'], self.gt)
-            # if nothing, look up ancestor
-            #if not all(d):
-            #    a = (int(self.df.loc[self.df['id']==row['ancestor']]['Begin']), \
-            #        int(self.df.loc[self.df['id']==row['ancestor']]['End']))
-            #    if all(a):
-            #        d = (np.mean(a), a[1])
-            #    else:
-            #        d = (None, None)
-            #    ##### THIS NEEDS TO BE INSIDE A TRY, MAYBE NEED TO MOVE get_names() INTO THE MODULE AND PUT THIS INSIDE IT
+            #d, box = get_dates(row['name'], self.gt)
+            d, cf_text = get_dates_and_cf(row['name'], self.gt)
 
             self.df.at[i,'Begin'] = d[0]
             self.df.at[i,'End'] = d[1]
 
             if keep_text:
-                box_df.at[i, 'text'] = box
+                box_df.at[i, 'text'] = cf_text
 
             if i % 100 == 0:
                 print(i, end='', flush=True)
@@ -343,6 +394,11 @@ class phyloData:
             elif i % 10 == 0:
                 print('.', end='', flush=True)
 
+        # write out at the end
+        if write:
+            self.df.to_csv(write, index=False)
+            if keep_text:
+                box_df.to_csv(write.replace(".csv", "-text.csv"), index=False)
 
     def return_data(self):
         '''returns the data as df'''
@@ -509,14 +565,19 @@ class phyloGraph():
             elif len(this_text) < 50:
                 fix = True
             else:
-                #print(this_text[:20])
+                # add parents text for better downward flow
+                try:
+                    parent = self.links_dict[c]['parents'][0]
+                    parent_row = self.text_df[self.text_df['id']==parent].squeeze()
+                    this_text += ' '+parent_row['text'] 
+                except:
+                    pass
+                #
+                this_text += ' '+this_row['name']# add the original name
                 self.text_df.at[self.text_df['id']==c, 'text'] = this_text
 
-            #print("{} {}".format(c, fix))
             if fix == True:
-                #print('^ fix me {}'. format(this_text))
                 check = self.links_dict[check]['parents'][0]
-                #print("   checking {}".format(check))
                 
     def load_text_data(self, text_file, pick):
         """"""
@@ -548,8 +609,9 @@ class phyloGraph():
             print("FAILURE: self.text_df doesn't exist. Run PhyloGraph.load_text_data() first.")
             return None
         #
-        vectorizer = CountVectorizer(max_df=0.1, min_df=0.01)
+        vectorizer = CountVectorizer(max_df=0.5, min_df=0)
         vectors = vectorizer.fit_transform(docs)
+        print("vocab shape: {}".format(vectors.shape))
         X = vectors.toarray()
 
         if mode == 'pca':

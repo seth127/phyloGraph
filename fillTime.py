@@ -43,4 +43,9 @@ print("writing to {}".format(write_name))
 pgd.add_time(write=write_name, keep_text=args.keep_text)
 print("Done getting age in {} secs".format(np.round(time() - start, 0)))
 
+# short one
+# python fillTime.py --root 15963 --name Primates --keep_text
+
+# long one (4-6 hours?)
 # python fillTime.py --root 2499 --name Chordata --keep_text --from_noage
+
