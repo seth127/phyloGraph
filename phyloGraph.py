@@ -440,7 +440,6 @@ class phyloGraph():
                 self.plot_df.at[self.plot_df['id']==c, 'Begin'] = new_begin
                 self.plot_df.at[self.plot_df['id']==c, 'End'] = np.min([new_begin, float(parent_df['End'])])
 
-
     def get_descendants(self, pick, mode):
         '''get all descendants from an id
         mode can be either:
@@ -495,8 +494,57 @@ class phyloGraph():
         else:
             print("FAILURE: get_descendants(mode) only valid options are 'filter' and 'focus'")
 
+    def fix_text(self, c):
+        # set up id to check
+        check = c
+        fix = True
+        while fix == True:
+            fix = False
+            this_row = self.text_df[self.text_df['id']==check].squeeze()
+            this_text = this_row['text']
+            if type(this_text) != str:
+                fix = True
+            elif len(this_text) < 50:
+                fix = True
+            else:
+                #print(this_text[:20])
+                self.text_df.at[self.text_df['id']==c, 'text'] = this_text
+
+            #print("{} {}".format(c, fix))
+            if fix == True:
+                #print('^ fix me {}'. format(this_text))
+                check = self.links_dict[check]['parents'][0]
+                #print("   checking {}".format(check))
+                
+    def load_text_data(self, text_file, pick):
+        """"""
+        self.text_df = pd.read_csv(text_file)
+        try:
+            self.text_df = self.text_df[self.text_df['id']\
+                                    .isin(list(self.plot_df['id']))]
+        except AttributeError:
+            print("FAILURE: self.plot_df doesn't exist. Run PhyloGraph.create_plot_df() first.")
+            return None
+
+        #
+        this_gen = self.links_dict[pick]['children']
+        while len(this_gen) > 0:
+            next_gen = []
+            for c in this_gen:
+                self.fix_text(c)
+                #
+                next_gen += self.links_dict[c]['children']
+
+            this_gen = next_gen
+
+    def create_plot_df(self, root):
+        # subset to only children of the root
+        self.root_age = self.df[self.df['id'] == root].squeeze()['Begin']
+        self.get_descendants(root, mode='filter')
+
+
     def create_plot_data(self, 
-                         root = 15040, # mammals
+                         root,
                          focus = 'all',
                          color_attr = 'extinct',
                          Z_dim = 'log_time',
@@ -509,10 +557,6 @@ class phyloGraph():
         #df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
         #df = df.reset_index()
         ### PUT THIS ^ IN get_descendants()
-
-        # subset to only children of the root
-        self.root_age = self.df[self.df['id'] == root].squeeze()['Begin']
-        self.get_descendants(root, mode='filter')
 
         # select node to focus on 
         if focus == 'all':
@@ -627,7 +671,8 @@ class phyloGraph():
                        y=Ye,
                        z=Ze,
                        mode='lines',
-                       opacity=0.7,
+                       #opacity=0.7,
+                       opacity=0.4,
                        line=dict(color='rgb(125,125,125)', width=1),
                        hoverinfo='none'
                        )
@@ -650,7 +695,8 @@ class phyloGraph():
                        marker=dict(symbol='circle',
                                      size=6,
                                      color=group,
-                                     opacity=0.6,
+                                     #opacity=0.6,
+                                     opacity=0.3,
                                      colorscale='Viridis'
                                      ),
                        hoverinfo='skip'
