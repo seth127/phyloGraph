@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 import re
 
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 import webbrowser
 import wikipedia
@@ -536,6 +538,35 @@ class phyloGraph():
                 next_gen += self.links_dict[c]['children']
 
             this_gen = next_gen
+    
+    def load_XY(self, mode='PCA'):
+        """mode must be 'pca' of 'tsne'
+        """
+        try:
+            docs = list(self.text_df['text'])
+        except AttributeError:
+            print("FAILURE: self.text_df doesn't exist. Run PhyloGraph.load_text_data() first.")
+            return None
+        #
+        vectorizer = CountVectorizer(max_df=0.1, min_df=0.01)
+        vectors = vectorizer.fit_transform(docs)
+        X = vectors.toarray()
+
+        if mode == 'pca':
+            X_pca = PCA(n_components=2).fit(X).transform(X)
+            XY = pd.DataFrame(X_pca, columns = ['x', 'y'])
+            print("loaded PCA data")
+        elif mode == 'tsne':
+            X_pca = PCA(n_components=50).fit(X).transform(X)
+            X_tsne = TSNE().fit(X_pca)
+            XY = pd.DataFrame(X_tsne.embedding_, columns=['x', 'y'])
+            print("loaded t-sne data")
+        else:
+            print("mode must be 'pca' of 'tsne'")
+            return None
+        #
+        self.plot_df['x'] = XY['x']
+        self.plot_df['y'] = XY['y']
 
     def create_plot_df(self, root):
         # subset to only children of the root
@@ -666,13 +697,23 @@ class phyloGraph():
         this_title = self.plot_df.loc[0, 'name']
         this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
 
+        # # time line
+        # trace0 = go.Scatter3d(
+        #         x=[[0, 0, None]],
+        #         y=[[0, 0, None]],
+        #         z=[[np.max(Yn), np.min(Yn), None]],
+        #         mode='lines',
+        #         line=dict(color='rgb(125,125,125)', width=5),
+        #         hoverinfo='none'
+        #     )
+
         # lines
         trace1=go.Scatter3d(x=Xe,
                        y=Ye,
                        z=Ze,
                        mode='lines',
                        #opacity=0.7,
-                       opacity=0.4,
+                       opacity=0.6,
                        line=dict(color='rgb(125,125,125)', width=1),
                        hoverinfo='none'
                        )
@@ -696,7 +737,7 @@ class phyloGraph():
                                      size=6,
                                      color=group,
                                      #opacity=0.6,
-                                     opacity=0.3,
+                                     opacity=0.4,
                                      colorscale='Viridis'
                                      ),
                        hoverinfo='skip'
@@ -758,6 +799,7 @@ class phyloGraph():
 
         # assign traces
         self.layout = layout
+        #self.plot_data=[trace0, trace1, trace1k, trace2, trace2k]
         self.plot_data=[trace1, trace1k, trace2, trace2k]
 
         #

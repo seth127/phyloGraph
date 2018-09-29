@@ -22,6 +22,8 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
+* change to beautifulSoup and scrape the classification stuff to 'text'
+* add up and down line for time
 * separate create_plot_data() from focus_plot_data()
     * build trace1 and trace2 once
     * then only rebuild the k traces when we re-focus
