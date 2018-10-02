@@ -8,6 +8,9 @@ import re
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from scipy.spatial.distance import cosine, pdist, squareform
+from sklearn.manifold import MDS
+
 
 import webbrowser
 import wikipedia
@@ -583,7 +586,7 @@ class phyloGraph():
             if fix == True:
                 check = self.links_dict[check]['parents'][0]
                 
-    def load_text_data(self, text_file, pick):
+    def load_text_data(self, text_file, pick, cf_text=True):
         """"""
         self.text_df = pd.read_csv(text_file)
         try:
@@ -593,7 +596,31 @@ class phyloGraph():
             print("FAILURE: self.plot_df doesn't exist. Run PhyloGraph.create_plot_df() first.")
             return None
 
-        #
+        # filter to only classification words
+        if cf_text:
+            # define classification words (the next word after any of these will be kept)
+            self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order', 'family', 'genus', 'species', 'clade']
+            # loop of all rows
+            for i, row in self.text_df.iterrows():
+                if type(row['text']) == str:
+                    this_text = row['text'].replace("  ", " ").split(" ") # filter double spaces
+
+                    # collect classification
+                    this_cf = []
+                    for j, t in enumerate(this_text):
+                        if t in self.CF_WORDS:
+                            this_cf.append(this_text[j+1])
+                    this_cf = list(set(this_cf))
+                    this_cf += row['name'].split(' ') # at species name
+
+                    # assign to row in text_df
+                    #self.text_df.at[i, 'text'] = ' '.join(this_cf)
+                    if cf_text == 'add':
+                        self.text_df.at[i, 'text'] = row['text'] + ' '.join(this_cf) + ' '.join(this_cf) + ' '.join(this_cf) + ' '.join(this_cf) 
+                    else:
+                        self.text_df.at[i, 'text'] = ' '.join(this_cf)
+
+        # fill in missing text rows
         this_gen = self.links_dict[pick]['children']
         while len(this_gen) > 0:
             next_gen = []
@@ -604,8 +631,8 @@ class phyloGraph():
 
             this_gen = next_gen
     
-    def load_XY(self, mode='PCA'):
-        """mode must be 'pca' of 'tsne'
+    def load_XY(self, mode='pca'):
+        """mode must be 'pca' or 'tsne' or 'mds'
         """
         try:
             docs = list(self.text_df['text'])
@@ -622,17 +649,28 @@ class phyloGraph():
             X_pca = PCA(n_components=2).fit(X).transform(X)
             XY = pd.DataFrame(X_pca, columns = ['x', 'y'])
             print("loaded PCA data")
-        elif mode == 'tsne':
-            X_pca = PCA(n_components=50).fit(X).transform(X)
-            X_tsne = TSNE().fit(X_pca)
-            XY = pd.DataFrame(X_tsne.embedding_, columns=['x', 'y'])
-            print("loaded t-sne data")
         else:
-            print("mode must be 'pca' of 'tsne'")
-            return None
+            X_pca = PCA(n_components=50).fit(X).transform(X)
+            if mode == 'tsne':
+                X_tsne = TSNE().fit(X_pca)
+                XY = pd.DataFrame(X_tsne.embedding_, columns=['x', 'y'])
+                print("loaded t-sne data")
+            elif mode == 'mds':
+                dists = pdist(X_pca, cosine)
+                dist_matrix = pd.DataFrame(squareform(dists), 
+                                       columns=self.text_df['id'], 
+                                       index=self.text_df['id'])
+
+                scaler = MDS(dissimilarity='precomputed', random_state=123)
+                XY = pd.DataFrame(scaler.fit_transform(dist_matrix))
+                XY.rename(index=str, columns={0:'x', 1:'y'}, inplace=True)
+                print("loaded MDS data")
+            else:
+                print("mode must be one of 'pca' or 'tsne' or 'mds'")
+                return None
         #
-        self.plot_df['x'] = XY['x']
-        self.plot_df['y'] = XY['y']
+        self.plot_df['x'] = list(XY['x'])
+        self.plot_df['y'] = list(XY['y'])
 
     def create_plot_df(self, root):
         # subset to only children of the root
@@ -847,6 +885,7 @@ class phyloGraph():
                 t=100
             ),
             hovermode='closest',
+            #dragmode='turntable', # https://plot.ly/python/reference/#layout-dragmode
             annotations=[
                    dict(
                    showarrow=False,
