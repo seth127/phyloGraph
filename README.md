@@ -22,8 +22,7 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
-* parse out only classification data from new text (look at for ['kingdom', 'phylum', etc...] and take the next one?)
-* add Multi-dim scaling option
+* try mds (on cf_text=True?) but adding some random noise to it
 * add up and down line for time
 * separate create_plot_data() from focus_plot_data()
     * build trace1 and trace2 once
