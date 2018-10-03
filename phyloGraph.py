@@ -723,6 +723,7 @@ class phyloGraph():
 
         # 
         labels=[]
+        labels_k=[]
         group=[]
         alpha = []
         layt = []
@@ -730,13 +731,16 @@ class phyloGraph():
             # create text labels
             if node['kin'] == 1: #### only labeling kinfolk
                 if add_links:
-                    try:
+                    try: # why this try/except?
                         #this_page_id = wikipedia.search(node['name'], results=1)[0]
-                        labels.append('<a href="https://en.wikipedia.org/wiki/{}">{} ({} MYA)</a>'.format(node['name'], node['name'], node['Begin']))
+                        labels_k.append('<a href="https://en.wikipedia.org/wiki/{}">{} ({} MYA)</a>'.format(node['name'], node['name'], node['Begin']))
                     except:
-                        labels.append(str(node['name']))
+                        labels_k.append(str(node['name']))
                 else:
-                    labels.append("{} ({} MYA)".format(node['name'], node['Begin']))
+                    labels_k.append("{} ({} MYA)".format(node['name'], node['Begin']))
+            # non-focus labels
+            labels.append("{} ({} MYA)".format(node['name'], node['Begin']))
+
             # create color key
             group.append(node[color_attr])
             # create opacity key
@@ -801,15 +805,16 @@ class phyloGraph():
         this_title = self.plot_df.loc[0, 'name']
         this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
 
-        # # time line
-        # trace0 = go.Scatter3d(
-        #         x=[[0, 0, None]],
-        #         y=[[0, 0, None]],
-        #         z=[[np.max(Yn), np.min(Yn), None]],
-        #         mode='lines',
-        #         line=dict(color='rgb(125,125,125)', width=5),
-        #         hoverinfo='none'
-        #     )
+        # time line
+        root_row = self.plot_df[self.plot_df['id'] == root].squeeze()
+        trace0 = go.Scatter3d(
+                x=[root_row['x'], root_row['x'], None],
+                y=[root_row['y'], root_row['y'], None],
+                z=[np.max(Zn) + 0.25, np.min(Zn), None],
+                mode='lines',
+                line=dict(color='rgb(125,125,125)', width=5),
+                hoverinfo='none'
+            )
 
         # lines
         trace1=go.Scatter3d(x=Xe,
@@ -817,7 +822,7 @@ class phyloGraph():
                        z=Ze,
                        mode='lines',
                        #opacity=0.7,
-                       opacity=0.6,
+                       opacity=0.65,
                        line=dict(color='rgb(125,125,125)', width=1),
                        hoverinfo='none'
                        )
@@ -841,10 +846,16 @@ class phyloGraph():
                                      size=6,
                                      color=group,
                                      #opacity=0.6,
-                                     opacity=0.4,
+                                     opacity=0.55,
                                      colorscale='Viridis'
                                      ),
-                       hoverinfo='skip'
+                       text=labels,
+                       hoverinfo='text',
+                       textfont=dict(
+                                family='sans serif',
+                                size=18,
+                                color='#ff7f0e'
+                            )
                        )
 
         # kinfolk nodes
@@ -854,12 +865,12 @@ class phyloGraph():
                        mode='markers',
                        name='actors',
                        marker=dict(symbol='circle',
-                                     size=8,
+                                     size=10,
                                      color=groupk,
                                      colorscale='Viridis',
                                      line=dict(color='rgb(50,50,50)', width=0.5)
                                      ),
-                       text=labels,
+                       text=labels_k,
                        hoverinfo='text'
                        )
 
@@ -904,8 +915,8 @@ class phyloGraph():
 
         # assign traces
         self.layout = layout
-        #self.plot_data=[trace0, trace1, trace1k, trace2, trace2k]
-        self.plot_data=[trace1, trace1k, trace2, trace2k]
+        self.plot_data=[trace0, trace1, trace1k, trace2, trace2k]
+        #self.plot_data=[trace1, trace1k, trace2, trace2k]
 
         #
         print("Loaded plot data. Highlighting {}".format(pick))
