@@ -23,7 +23,8 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 
 ## To Do List
 * try mds (on cf_text=True?) but adding some random noise to it
-* add up and down line for time
+* adjust the log scale (add 5 or 10 before logging?)
+* CHECK ON WHY Homo Sapiens (and friends) ARE AT 5MM YEARS (getting filled somehow)
 * separate create_plot_data() from focus_plot_data()
     * build trace1 and trace2 once
     * then only rebuild the k traces when we re-focus

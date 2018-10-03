@@ -815,6 +815,13 @@ class phyloGraph():
                 line=dict(color='rgb(125,125,125)', width=5),
                 hoverinfo='none'
             )
+        trace0t = go.Scatter3d(
+                x=[root_row['x'], root_row['x'], root_row['x'],],
+                y=[root_row['y'], root_row['y'], root_row['y']],
+                z=[np.log1p(5), np.log1p(20), np.log1p(50), np.log1p(150)],
+                mode='text',
+                text=['5 MYA', '20 MYA', '50 MYA', '150 MYA']
+            )
 
         # lines
         trace1=go.Scatter3d(x=Xe,
@@ -898,7 +905,7 @@ class phyloGraph():
             hovermode='closest',
             #dragmode='turntable', # https://plot.ly/python/reference/#layout-dragmode
             annotations=[
-                   dict(
+                dict(
                    showarrow=False,
                     text=this_text,
                     xref='paper',
@@ -915,7 +922,7 @@ class phyloGraph():
 
         # assign traces
         self.layout = layout
-        self.plot_data=[trace0, trace1, trace1k, trace2, trace2k]
+        self.plot_data=[trace0, trace0t, trace1, trace1k, trace2, trace2k]
         #self.plot_data=[trace1, trace1k, trace2, trace2k]
 
         #
