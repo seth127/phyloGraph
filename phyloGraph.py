@@ -680,6 +680,29 @@ class phyloGraph():
         self.plot_df['x'] = list(XY['x'])
         self.plot_df['y'] = list(XY['y'])
 
+    def rejitter_XY(self):
+
+        #depth_mult = np.sqrt(node['Begin'])
+        #nodes_list[i]['x'] = parent[0]['x'] + (rn() * depth_mult)
+        #nodes_list[i]['y'] = parent[0]['y'] + (rn() * depth_mult)
+
+        # fix ages
+        this_gen = self.links_dict[self.root]['children']
+        while len(this_gen) > 0:
+            next_gen = []
+            for c in this_gen:
+                # get parent
+                parent = self.links_dict[c]['parents'][0]
+                parent_row = self.plot_df[self.plot_df['id'] == parent].squeeze()
+                this_row = self.plot_df[self.plot_df['id'] == c].squeeze()
+                # pass down x and y plus the jitter
+                self.plot_df.at[self.plot_df['id']==c, 'x'] = parent_row['x']+ (rn() * np.sqrt(this_row['Begin']))
+                self.plot_df.at[self.plot_df['id']==c, 'y'] = parent_row['y']+ (rn() * np.sqrt(this_row['Begin']))
+                # get next generation
+                next_gen += self.links_dict[c]['children']
+            #
+            this_gen = next_gen
+
     def create_plot_df(self, root):
         # subset to only children of the root
         self.root_age = self.df[self.df['id'] == root].squeeze()['Begin']
@@ -700,6 +723,7 @@ class phyloGraph():
         ### PUT THIS ^ IN get_descendants()
 
         # assign args
+        self.root = root
         self.color_attr = color_attr
         self.Z_dim = Z_dim
         self.Z_dim_mult = Z_dim_mult

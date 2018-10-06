@@ -22,7 +22,9 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
-* have click trigger a refocus()
+* fix rejitter_XY() (look at last cell of phyloGraph.ipynb)
+* get tsne/pca/mds to work better
+* have click trigger a refocus() (I don't think this is actually possible, at least not in offline mode)
 * try mds (on cf_text=True?) but adding some random noise to it
 * adjust the log scale (add 5 or 10 before logging?)
 * CHECK ON WHY Homo Sapiens (and friends) ARE AT 5MM YEARS (getting filled somehow)
