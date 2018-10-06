@@ -546,7 +546,7 @@ class phyloGraph():
             while len(parent) > 0:
                 keepers += parent
                 # add parent's other kids
-                keepers += self.links_dict[parent[0]]['children']
+                # keepers += self.links_dict[parent[0]]['children']
                 # check the next one
                 parent = self.links_dict[parent[0]]['parents']
 
@@ -680,18 +680,21 @@ class phyloGraph():
 
     def create_plot_data(self, 
                          root,
-                         focus = 'all',
                          color_attr = 'extinct',
                          Z_dim = 'log_time',
                          Z_dim_mult = 1, # set to -1 if using 'depth' for Z_dim
                          max_nodes = 50000,
-                         max_depth = 50,
-                         add_links = False):
+                         max_depth = 50):
         ''''''
         # subset to max_nodes and max_depth
         #df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
         #df = df.reset_index()
         ### PUT THIS ^ IN get_descendants()
+
+        # assign args
+        self.color_attr = color_attr
+        self.Z_dim = Z_dim
+        self.Z_dim_mult = Z_dim_mult
 
         ## create links list
         links_list = []
@@ -714,12 +717,12 @@ class phyloGraph():
         for i, node in self.plot_df.iterrows():
             labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
             # create color key
-            group.append(node[color_attr])
+            group.append(node[self.color_attr])
             # create layout list
-            d = node[Z_dim]
+            d = node[self.Z_dim]
             layt.append([node['x'], 
                          node['y'], 
-                         (d*Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         (d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
@@ -847,13 +850,9 @@ class phyloGraph():
         print("Loaded plot data. Root node: {}".format(root))
 
 
-    def focus_plot_data(self, 
-                         focus,
-                         color_attr = 'extinct',
-                         Z_dim = 'log_time',
-                         Z_dim_mult = 1, # set to -1 if using 'depth' for Z_dim
-                         add_links = False):
-        ''''''
+    def focus_plot(self, focus, add_links = True):
+        '''makes the "focus" nodes
+        highlights the kinfolk of the id you pass to focus arg'''
         # get kinfolk of focus node
         kin = self.get_descendants(focus, mode='focus')
         self.focus_df = self.plot_df[self.plot_df['kin']==1]
@@ -889,13 +888,13 @@ class phyloGraph():
                 labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
 
             # create color key
-            group.append(node[color_attr])
+            group.append(node[self.color_attr])
             # create layout list
-            d = node[Z_dim]
+            d = node[self.Z_dim]
 
             layt.append([node['x'], 
                          node['y'], 
-                         (d*Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         (d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
@@ -949,18 +948,30 @@ class phyloGraph():
                        hoverinfo='text'
                        )
 
-        self.plot_data += [trace1k, trace2k]
+        self.focus_plot_data = [trace1k, trace2k]
 
         #
         print("Loaded plot data. Highlighting: {}".format(focus))
 
     def render_plot(self, publish=False, filename="testplot"):
-        fig=go.Figure(data=self.plot_data, layout=self.layout)
+        if self.focus_plot_data:
+            plot_data = self.plot_data + self.focus_plot_data
+        else:
+            plot_data = self.plot_data
+
+        fig=go.Figure(data=plot_data, layout=self.layout)
 
         if publish:
             self.plot = py.iplot(fig, filename=filename)
         else:
             iplot(fig)
+
+    def unfocus(self):
+        self.focus_plot_data = None
+
+    def refocus(self, focus):
+        self.focus_plot(focus)
+        self.render_plot()
 
     def open_plot(self):
         webbrowser.open(self.plot.resource, new=2)
