@@ -522,7 +522,7 @@ class phyloGraph():
         #
         if mode == 'filter':
             self.plot_df = self.df[self.df['id'].isin(keepers)]
-            self.plot_df = self.plot_df.reset_index()
+            self.plot_df.reset_index(inplace=True, drop=True)
             # fix ages
             this_gen = self.links_dict[pick]['children']
             #depth = 0
@@ -698,8 +698,8 @@ class phyloGraph():
                 parent_row = self.plot_df[self.plot_df['id'] == parent].squeeze()
                 this_row = self.plot_df[self.plot_df['id'] == c].squeeze()
                 # pass down x and y plus the jitter
-                self.plot_df.at[self.plot_df['id']==c, 'x'] = parent_row['x']+ (rn() * this_row['log_time'] / 5)#* np.sqrt(this_row['Begin']))
-                self.plot_df.at[self.plot_df['id']==c, 'y'] = parent_row['y']+ (rn() * this_row['log_time'] / 5)#* np.sqrt(this_row['Begin']))
+                self.plot_df.at[self.plot_df['id']==c, 'x'] = parent_row['x']+ (rn() * this_row['log_time'] / 4)#* np.sqrt(this_row['Begin']))
+                self.plot_df.at[self.plot_df['id']==c, 'y'] = parent_row['y']+ (rn() * this_row['log_time'] / 4)#* np.sqrt(this_row['Begin']))
                 # get next generation
                 next_gen += self.links_dict[c]['children']
             #
@@ -711,6 +711,11 @@ class phyloGraph():
         self.root_age = self.df[self.df['id'] == self.root].squeeze()['Begin']
         self.get_descendants(self.root, mode='filter')
 
+        # filtering out the ones with Begin == 0
+        self.plot_df = self.plot_df.loc[self.plot_df['Begin'] > 0.1]
+        self.plot_df.reset_index(inplace=True, drop=True)
+
+
     def create_plot_data(self, 
                          color_attr = 'extinct',
                          Z_dim = 'log_time',
@@ -720,7 +725,7 @@ class phyloGraph():
         ''''''
         # subset to max_nodes and max_depth
         #df = self.df[self.df['depth'] <= max_depth].head(max_nodes)
-        #df = df.reset_index()
+        #df = df.reset_index(inplace=True, drop=True)
         ### PUT THIS ^ IN get_descendants()
 
         # assign args
@@ -890,7 +895,7 @@ class phyloGraph():
         # get kinfolk of focus node
         kin = self.get_descendants(focus, mode='focus')
         self.focus_df = self.plot_df[self.plot_df['kin']==1]
-        self.focus_df.reset_index(inplace=True)
+        self.focus_df.reset_index(inplace=True, drop=True)
 
         focus_row = self.focus_df.loc[self.focus_df['id']==focus].squeeze()
 
