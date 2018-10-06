@@ -543,13 +543,21 @@ class phyloGraph():
         elif mode == 'focus':
             # add ancestors
             parent = self.links_dict[pick]['parents']
-            while len(parent) > 0:
+            # add parent's other kids
+            #keepers += self.links_dict[parent[0]]['children']
+            
+            while parent in self.plot_df['id'].values:
+            #while len(parent) > 0:
                 keepers += parent
-                # add parent's other kids
-                # keepers += self.links_dict[parent[0]]['children']
+
+                # record this one's kids
+                siblings = self.links_dict[parent[0]]['children']
+
                 # check the next one
                 parent = self.links_dict[parent[0]]['parents']
 
+            # add kids of root node
+            keepers += siblings
 
             # add kin column
             self.plot_df['kin'] = 0
@@ -722,7 +730,8 @@ class phyloGraph():
             d = node[self.Z_dim]
             layt.append([node['x'], 
                          node['y'], 
-                         (d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         #(d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         d*self.Z_dim_mult])
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
@@ -749,7 +758,7 @@ class phyloGraph():
             Ze+=[layt[e0][2],layt[e1][2], None] 
 
         # make traces
-        this_title = self.plot_df.loc[0, 'name']
+        this_text = self.plot_df.loc[0, 'name']
         ### this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
 
         # time line
@@ -775,7 +784,6 @@ class phyloGraph():
                        y=Ye,
                        z=Ze,
                        mode='lines',
-                       #opacity=0.7,
                        opacity=0.65,
                        line=dict(color='rgb(125,125,125)', width=1),
                        hoverinfo='none'
@@ -790,7 +798,6 @@ class phyloGraph():
                        marker=dict(symbol='circle',
                                      size=6,
                                      color=group,
-                                     #opacity=0.6,
                                      opacity=0.55,
                                      colorscale='Viridis'
                                      ),
@@ -812,7 +819,8 @@ class phyloGraph():
                   )
 
         layout = go.Layout(
-                 title=this_title,
+                 #title=this_title,
+                 title=this_text,
                  width=1000,
                  height=1000,
                  showlegend=False,
@@ -826,11 +834,27 @@ class phyloGraph():
             ),
             hovermode='closest',
             #dragmode='turntable', # https://plot.ly/python/reference/#layout-dragmode
+            annotations=[
+                dict(
+                   showarrow=False,
+                    text= "Root node: {}".format(this_text),
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=0.1,
+                    xanchor='left',
+                    yanchor='bottom',
+                    font=dict(
+                    size=14
+                    )
+                    )
+                ]   
             )
 
         # assign traces
         self.layout = layout
         self.plot_data=[trace0, trace0t, trace1, trace2]
+        self.focus_plot_data = None
 
         #
         print("Loaded plot data. Root node: {}".format(root))
@@ -843,7 +867,7 @@ class phyloGraph():
         kin = self.get_descendants(focus, mode='focus')
         self.focus_df = self.plot_df[self.plot_df['kin']==1]
         self.focus_df.reset_index(inplace=True)
-        
+
         focus_row = self.focus_df.loc[self.focus_df['id']==focus].squeeze()
 
         ## create links list
@@ -882,7 +906,15 @@ class phyloGraph():
 
             layt.append([node['x'], 
                          node['y'], 
-                         (d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         #(d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+                         d*self.Z_dim_mult])    
+
+        # semi-hack to always make sure there are two colors
+        if self.color_attr == 'extinct':
+            group.append(0)
+            group.append(2)
+        # because if it's all one or the other the color changes
+        # and for some reason there are no 1's
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
@@ -909,7 +941,7 @@ class phyloGraph():
 
         # make traces
         #this_text = self.focus_df.loc[self.focus_df['id']==focus]['name'].values[0]
-        this_text = '<a href="https://en.wikipedia.org/wiki/{name}">{name}</a> ({year} MYA)'\
+        this_title = '<a href="https://en.wikipedia.org/wiki/{name}">{name}</a> ({year} MYA)'\
                                         .format(name = focus_row['name'],
                                                 year = focus_row['Begin'])
 
@@ -939,22 +971,23 @@ class phyloGraph():
                        hoverinfo='text'
                        )
 
-        self.focus_plot_data = [trace1k, trace2k]
-        self.layout.annotations=[
-                dict(
-                   showarrow=False,
-                    text=this_text,
-                    xref='paper',
-                    yref='paper',
-                    x=0,
-                    y=0.1,
-                    xanchor='left',
-                    yanchor='bottom',
-                    font=dict(
-                    size=14
-                    )
-                    )
-                ]   
+                # kinfolk nodes
+        tracef=go.Scatter3d(x=[focus_row['x']],
+                       y=[focus_row['y']],
+                       z=[focus_row[self.Z_dim]*self.Z_dim_mult],
+                       mode='markers',
+                       name='actors',
+                       marker=dict(symbol='circle',
+                                     size=20,
+                                     opacity = 0.6,
+                                     color=[1],
+                                     colorscale='Viridis'),
+                       text=labels,
+                       hoverinfo='text'
+                       )
+
+        self.focus_plot_data = [trace1k, trace2k, tracef]
+        self.layout.title = this_title
 
         #
         print("Loaded plot data. Highlighting: {}".format(focus))
@@ -978,7 +1011,6 @@ class phyloGraph():
     def refocus(self, focus):
         self.focus_plot(focus)
         self.render_plot()
-        print("here would be the link")
 
     def open_plot(self):
         webbrowser.open(self.plot.resource, new=2)

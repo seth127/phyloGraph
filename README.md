@@ -22,17 +22,13 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
+* have click trigger a refocus()
 * try mds (on cf_text=True?) but adding some random noise to it
 * adjust the log scale (add 5 or 10 before logging?)
 * CHECK ON WHY Homo Sapiens (and friends) ARE AT 5MM YEARS (getting filled somehow)
-* separate create_plot_data() from focus_plot_data()
-    * build trace1 and trace2 once
-    * then only rebuild the k traces when we re-focus
-* show small labels for non-focus nodes
+* figure out how to format labels for non-focus nodes
 * fix year (i.e. 2017 for Chrotomys) getting parsed into age
 * put back in max_depth and max_nodes stuff
-* add single focus mode
-    * pass focus and no root and root auto becomes great-grandparent of focus.
 * have some smarter X- and Y-dims (maybe?)
     * would be awesome to scrape classification stuff from wikipedia and the PCA it, but having trouble getting it from infobox. 
     * Could maybe just tokenize whatever's in the infobox and PCA that.
