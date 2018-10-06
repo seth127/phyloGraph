@@ -493,11 +493,11 @@ class phyloGraph():
                 end_age = float(parent_df['End'])
             # assign results
             if (this_age > (begin_age * 0.95)) & ~(this_age > (self.root_age * 0.95)):
-                new_begin = np.max([(begin_age * 0.85), np.mean([begin_age, end_age])])
+                new_begin = np.round(np.max([(begin_age * 0.85), np.mean([begin_age, end_age])]), 1)
                 self.plot_df.at[self.plot_df['id']==c, 'Begin'] = new_begin
                 self.plot_df.at[self.plot_df['id']==c, 'End'] = np.min([new_begin, float(parent_df['End']), this_row['End']])
             else:
-                new_begin = np.mean([begin_age, end_age])
+                new_begin = np.round(np.mean([begin_age, end_age]), 1)
                 self.plot_df.at[self.plot_df['id']==c, 'Begin'] = new_begin
                 self.plot_df.at[self.plot_df['id']==c, 'End'] = np.min([new_begin, float(parent_df['End'])])
 
@@ -693,15 +693,6 @@ class phyloGraph():
         #df = df.reset_index()
         ### PUT THIS ^ IN get_descendants()
 
-        # select node to focus on 
-        if focus == 'all':
-            pick = root
-        else:
-            pick = focus
-
-        # get kinfolk of focus node
-        kin = self.get_descendants(pick, mode='focus')
-
         ## create links list
         links_list = []
         for i, n in self.plot_df.iterrows():
@@ -711,74 +702,35 @@ class phyloGraph():
                 'value': n['num_kids']
             })
 
-        #print("len(links_list): {}".format(len(links_list)))
-        #print("first 3 links: {}".format(links_list[:3]))
-
         L=len(links_list)
-        #print("len(links_list): {}".format(L))
 
-        #
+        # make list of tuples for edges
         Edges=[(links_list[k]['source'], links_list[k]['target']) for k in range(L)]
-        #print("Edges {}".format(Edges[:5]))
 
-        # 
+        # create layout
         labels=[]
-        labels_k=[]
         group=[]
-        alpha = []
         layt = []
         for i, node in self.plot_df.iterrows():
-            # create text labels
-            if node['kin'] == 1: #### only labeling kinfolk
-                if add_links:
-                    try: # why this try/except?
-                        #this_page_id = wikipedia.search(node['name'], results=1)[0]
-                        labels_k.append('<a href="https://en.wikipedia.org/wiki/{}">{} ({} MYA)</a>'.format(node['name'], node['name'], node['Begin']))
-                    except:
-                        labels_k.append(str(node['name']))
-                else:
-                    labels_k.append("{} ({} MYA)".format(node['name'], node['Begin']))
-            # non-focus labels
-            labels.append("{} ({} MYA)".format(node['name'], node['Begin']))
-
+            labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
             # create color key
             group.append(node[color_attr])
-            # create opacity key
-            alpha.append(node['kin'])
             # create layout list
             d = node[Z_dim]
-            # # PCA
-            # # layt.append(list(X_pca[i]) + [d * -1])
             layt.append([node['x'], 
                          node['y'], 
                          (d*Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
-            
-
-        #print(labels[:3])
-        #print(group[:3])
-        #print(alpha[:3])
-        #print(len(layt))
-        #print(layt[:3])
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
         Yn=[layt[k][1] for k in range(len(layt))]# y-coordinates
         Zn=[layt[k][2] for k in range(len(layt))]# z-coordinates
 
-        # check if they're kinfolk
-        Xnk=[layt[k][0] for k in range(len(layt)) if alpha[k]==1]# x-coordinates of nodes
-        Ynk=[layt[k][1] for k in range(len(layt)) if alpha[k]==1]# y-coordinates
-        Znk=[layt[k][2] for k in range(len(layt)) if alpha[k]==1]# z-coordinates
-        groupk=[group[k] for k in range(len(layt)) if alpha[k]==1]# color
-        #print(len(Xnk))
-
         # make edges
         Xe=[]
         Ye=[]
         Ze=[]
-        Xek=[]
-        Yek=[]
-        Zek=[]
+
         for e in Edges:
             try: 
                 e0 = self.plot_df[self.plot_df['id'] == e[0]].index.values[0]
@@ -792,18 +744,10 @@ class phyloGraph():
             Xe+=[layt[e0][0],layt[e1][0], None]# x-coordinates of edge ends
             Ye+=[layt[e0][1],layt[e1][1], None]  
             Ze+=[layt[e0][2],layt[e1][2], None] 
-            # check if they're kinfolk
-            if e[0] in kin:
-                Xek+=[layt[e0][0],layt[e1][0], None]
-                Yek+=[layt[e0][1],layt[e1][1], None]
-                Zek+=[layt[e0][2],layt[e1][2], None]
-
-        #print(len(Ze))
-        #print(len(Zek))
 
         # make traces
         this_title = self.plot_df.loc[0, 'name']
-        this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
+        ### this_text = self.plot_df.loc[self.plot_df['id']==pick]['name'].values[0]
 
         # time line
         root_row = self.plot_df[self.plot_df['id'] == root].squeeze()
@@ -818,9 +762,9 @@ class phyloGraph():
         trace0t = go.Scatter3d(
                 x=[root_row['x'], root_row['x'], root_row['x'],],
                 y=[root_row['y'], root_row['y'], root_row['y']],
-                z=[np.log1p(5), np.log1p(20), np.log1p(50), np.log1p(150)],
+                z=[np.log1p(1), np.log1p(5), np.log1p(20), np.log1p(50), np.log1p(150)],
                 mode='text',
-                text=['5 MYA', '20 MYA', '50 MYA', '150 MYA']
+                text=['1 MYA', '5 MYA', '20 MYA', '50 MYA', '150 MYA']
             )
 
         # lines
@@ -831,15 +775,6 @@ class phyloGraph():
                        #opacity=0.7,
                        opacity=0.65,
                        line=dict(color='rgb(125,125,125)', width=1),
-                       hoverinfo='none'
-                       )
-        # kinfolk lines
-        trace1k=go.Scatter3d(x=Xek,
-                       y=Yek,
-                       z=Zek,
-                       mode='lines',
-                       opacity=1,
-                       line=dict(color='rgb(125,125,125)', width=1.5),
                        hoverinfo='none'
                        )
 
@@ -863,22 +798,6 @@ class phyloGraph():
                                 size=18,
                                 color='#ff7f0e'
                             )
-                       )
-
-        # kinfolk nodes
-        trace2k=go.Scatter3d(x=Xnk,
-                       y=Ynk,
-                       z=Znk,
-                       mode='markers',
-                       name='actors',
-                       marker=dict(symbol='circle',
-                                     size=10,
-                                     color=groupk,
-                                     colorscale='Viridis',
-                                     line=dict(color='rgb(50,50,50)', width=0.5)
-                                     ),
-                       text=labels_k,
-                       hoverinfo='text'
                        )
 
         axis=dict(showbackground=False,
@@ -907,7 +826,7 @@ class phyloGraph():
             annotations=[
                 dict(
                    showarrow=False,
-                    text=this_text,
+                    ### text=this_text,
                     xref='paper',
                     yref='paper',
                     x=0,
@@ -922,11 +841,118 @@ class phyloGraph():
 
         # assign traces
         self.layout = layout
-        self.plot_data=[trace0, trace0t, trace1, trace1k, trace2, trace2k]
-        #self.plot_data=[trace1, trace1k, trace2, trace2k]
+        self.plot_data=[trace0, trace0t, trace1, trace2]
 
         #
-        print("Loaded plot data. Highlighting {}".format(pick))
+        print("Loaded plot data. Root node: {}".format(root))
+
+
+    def focus_plot_data(self, 
+                         focus,
+                         color_attr = 'extinct',
+                         Z_dim = 'log_time',
+                         Z_dim_mult = 1, # set to -1 if using 'depth' for Z_dim
+                         add_links = False):
+        ''''''
+        # get kinfolk of focus node
+        kin = self.get_descendants(focus, mode='focus')
+        self.focus_df = self.plot_df[self.plot_df['kin']==1]
+        self.focus_df.reset_index(inplace=True)
+
+        ## create links list
+        links_list = []
+        for i, n in self.focus_df.iterrows():
+            links_list.append({
+                'source': n['id'], 
+                'target': n['ancestor'], 
+                'value': n['num_kids']
+            })
+
+        L=len(links_list)
+
+        #
+        Edges=[(links_list[k]['source'], links_list[k]['target']) for k in range(L)]
+
+        # 
+        labels=[]
+        group=[]
+        layt = []
+        for i, node in self.focus_df.iterrows():
+            # create text labels
+            if add_links:
+                try: # why this try/except?
+                    #this_page_id = wikipedia.search(node['name'], results=1)[0]
+                    labels.append('<a href="https://en.wikipedia.org/wiki/{}">{} -- {} ({} MYA)</a>'.format(node['name'], node['name'], node['id'], node['Begin']))
+                except:
+                    labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
+            else:
+                labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
+
+            # create color key
+            group.append(node[color_attr])
+            # create layout list
+            d = node[Z_dim]
+
+            layt.append([node['x'], 
+                         node['y'], 
+                         (d*Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
+
+        # make nodes
+        Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
+        Yn=[layt[k][1] for k in range(len(layt))]# y-coordinates
+        Zn=[layt[k][2] for k in range(len(layt))]# z-coordinates
+
+        # make edges
+        Xe=[]
+        Ye=[]
+        Ze=[]
+        for e in Edges:
+            try: 
+                e0 = self.focus_df[self.focus_df['id'] == e[0]].index.values[0]
+            except:
+                e0 = 0
+            try:
+                e1 = self.focus_df[self.focus_df['id'] == e[1]].index.values[0]
+            except:
+                e1 = 0
+            #
+            Xe+=[layt[e0][0],layt[e1][0], None]# x-coordinates of edge ends
+            Ye+=[layt[e0][1],layt[e1][1], None]  
+            Ze+=[layt[e0][2],layt[e1][2], None] 
+
+        # make traces
+        this_text = self.focus_df.loc[self.focus_df['id']==focus]['name'].values[0]
+
+        # kinfolk lines
+        trace1k=go.Scatter3d(x=Xe,
+                       y=Ye,
+                       z=Ze,
+                       mode='lines',
+                       opacity=1,
+                       line=dict(color='rgb(125,125,125)', width=1.5),
+                       hoverinfo='none'
+                       )
+
+        # kinfolk nodes
+        trace2k=go.Scatter3d(x=Xn,
+                       y=Yn,
+                       z=Zn,
+                       mode='markers',
+                       name='actors',
+                       marker=dict(symbol='circle',
+                                     size=10,
+                                     color=group,
+                                     colorscale='Viridis',
+                                     line=dict(color='rgb(50,50,50)', width=0.5)
+                                     ),
+                       text=labels,
+                       hoverinfo='text'
+                       )
+
+        self.plot_data += [trace1k, trace2k]
+
+        #
+        print("Loaded plot data. Highlighting: {}".format(focus))
 
     def render_plot(self, publish=False, filename="testplot"):
         fig=go.Figure(data=self.plot_data, layout=self.layout)
