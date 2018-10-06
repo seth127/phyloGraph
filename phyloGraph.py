@@ -826,21 +826,7 @@ class phyloGraph():
             ),
             hovermode='closest',
             #dragmode='turntable', # https://plot.ly/python/reference/#layout-dragmode
-            annotations=[
-                dict(
-                   showarrow=False,
-                    ### text=this_text,
-                    xref='paper',
-                    yref='paper',
-                    x=0,
-                    y=0.1,
-                    xanchor='left',
-                    yanchor='bottom',
-                    font=dict(
-                    size=14
-                    )
-                    )
-                ],    )
+            )
 
         # assign traces
         self.layout = layout
@@ -857,6 +843,8 @@ class phyloGraph():
         kin = self.get_descendants(focus, mode='focus')
         self.focus_df = self.plot_df[self.plot_df['kin']==1]
         self.focus_df.reset_index(inplace=True)
+        
+        focus_row = self.focus_df.loc[self.focus_df['id']==focus].squeeze()
 
         ## create links list
         links_list = []
@@ -920,7 +908,10 @@ class phyloGraph():
             Ze+=[layt[e0][2],layt[e1][2], None] 
 
         # make traces
-        this_text = self.focus_df.loc[self.focus_df['id']==focus]['name'].values[0]
+        #this_text = self.focus_df.loc[self.focus_df['id']==focus]['name'].values[0]
+        this_text = '<a href="https://en.wikipedia.org/wiki/{name}">{name}</a> ({year} MYA)'\
+                                        .format(name = focus_row['name'],
+                                                year = focus_row['Begin'])
 
         # kinfolk lines
         trace1k=go.Scatter3d(x=Xe,
@@ -949,6 +940,21 @@ class phyloGraph():
                        )
 
         self.focus_plot_data = [trace1k, trace2k]
+        self.layout.annotations=[
+                dict(
+                   showarrow=False,
+                    text=this_text,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=0.1,
+                    xanchor='left',
+                    yanchor='bottom',
+                    font=dict(
+                    size=14
+                    )
+                    )
+                ]   
 
         #
         print("Loaded plot data. Highlighting: {}".format(focus))
@@ -972,6 +978,7 @@ class phyloGraph():
     def refocus(self, focus):
         self.focus_plot(focus)
         self.render_plot()
+        print("here would be the link")
 
     def open_plot(self):
         webbrowser.open(self.plot.resource, new=2)
