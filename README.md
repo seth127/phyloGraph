@@ -22,7 +22,10 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
-* fix rejitter_XY() (look at last cell of phyloGraph.ipynb)
+* move fix_age and fix_text steps to data prep so that we can just save out the dataframe(s) that's already filled in. THEN RUN IT because Chordata takes 90 mins to fix the age (which it shouldn't, but maybe I need to look at that too. Maybe has to do with Humans being 5MYA but also 3MYA but really 1MYA?)
+* try clustering down to Order and then jitter after that.
+* create button to snap back to time up-and-down
+* button to freeze z-axis
 * get tsne/pca/mds to work better
 * have click trigger a refocus() (I don't think this is actually possible, at least not in offline mode)
 * try mds (on cf_text=True?) but adding some random noise to it

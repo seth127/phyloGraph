@@ -21,6 +21,9 @@ import plotly.plotly as py
 from plotly.offline import iplot
 import plotly.graph_objs as go
 
+# AAA
+from time import time
+
 # constants
 TREE_OF_LIFE = "http://tolweb.org/onlinecontributors/app?service=external&page=xml/"
 TOL_SEARCH = "GroupSearchService&group={}"
@@ -501,12 +504,13 @@ class phyloGraph():
                 self.plot_df.at[self.plot_df['id']==c, 'Begin'] = new_begin
                 self.plot_df.at[self.plot_df['id']==c, 'End'] = np.min([new_begin, float(parent_df['End'])])
 
-    def get_descendants(self, pick, mode):
+    def get_descendants(self, pick, mode, start=time()):
         '''get all descendants from an id
         mode can be either:
             'filter' - filters self.df to all descendants of pick
             'focus' - creates 'kin' column and assigns 1 to descendants and parents and 0 to all others
         '''
+        print("AAA {} getting descendents".format(np.round(time()-start, 1)))
         # get descendants
         kids = []
         this_gen = self.links_dict[pick]['children']
@@ -521,12 +525,14 @@ class phyloGraph():
         keepers += kids
         #
         if mode == 'filter':
+            print("AAA {} filtering plot_df to {} keepers ".format(np.round(time()-start, 1), len(keepers)))
             self.plot_df = self.df[self.df['id'].isin(keepers)]
             self.plot_df.reset_index(inplace=True, drop=True)
             # fix ages
             this_gen = self.links_dict[pick]['children']
             #depth = 0
             while len(this_gen) > 0:
+                print("AAA {} fix_age this_gen: {} nodes ".format(np.round(time()-start, 1), len(this_gen)))
                 #depth += 1
                 next_gen = []
                 for c in this_gen:
@@ -607,7 +613,8 @@ class phyloGraph():
         # filter to only classification words
         if cf_text:
             # define classification words (the next word after any of these will be kept)
-            self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order', 'family', 'genus', 'species', 'clade']
+            #self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order', 'family', 'genus', 'species', 'clade']
+            self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order']
             # loop of all rows
             for i, row in self.text_df.iterrows():
                 if type(row['text']) == str:
@@ -706,13 +713,17 @@ class phyloGraph():
             this_gen = next_gen
 
     def create_plot_df(self, root):
+        start = time()
         # subset to only children of the root
         self.root = root
         self.root_age = self.df[self.df['id'] == self.root].squeeze()['Begin']
-        self.get_descendants(self.root, mode='filter')
+        print("AAA {} root : {} ({} MYA)".format(np.round(time()-start, 1), self.root, self.root_age))
+        self.get_descendants(self.root, mode='filter', start=start)
 
         # filtering out the ones with Begin == 0
+        print("AAA {} filtering out the ones with Begin == 0".format(np.round(time()-start, 1)))
         self.plot_df = self.plot_df.loc[self.plot_df['Begin'] > 0.1]
+        print("AAA {} reseting index".format(np.round(time()-start, 1)))
         self.plot_df.reset_index(inplace=True, drop=True)
 
 
@@ -813,7 +824,8 @@ class phyloGraph():
                        y=Ye,
                        z=Ze,
                        mode='lines',
-                       opacity=0.65,
+                       #opacity=0.65,
+                       opacity=0.33,
                        line=dict(color='rgb(125,125,125)', width=1),
                        hoverinfo='none'
                        )
@@ -827,7 +839,8 @@ class phyloGraph():
                        marker=dict(symbol='circle',
                                      size=6,
                                      color=group,
-                                     opacity=0.55,
+                                     #opacity=0.55,
+                                     opacity=0.33,
                                      colorscale='Viridis'
                                      ),
                        text=labels,
@@ -980,7 +993,7 @@ class phyloGraph():
                        z=Ze,
                        mode='lines',
                        opacity=1,
-                       line=dict(color='rgb(125,125,125)', width=1.5),
+                       line=dict(color='rgb(125,125,125)', width=3),
                        hoverinfo='none'
                        )
 
@@ -1027,7 +1040,25 @@ class phyloGraph():
         else:
             plot_data = self.plot_data
 
-        fig=go.Figure(data=plot_data, layout=self.layout)
+        #fig=go.Figure(data=plot_data, layout=self.layout)
+        ###########
+        fig=go.FigureWidget(data=plot_data, layout=self.layout)
+
+        ## scatter = fig.data[3]
+        ## 
+        ## # create our callback function
+        ## def update_point(trace, points, selector):
+        ##     c = list(scatter.marker.color)
+        ##     s = list(scatter.marker.size)
+        ##     for i in points.point_inds:
+        ##         print(i)
+        ##         c[i] = '#bae2be'
+        ##         s[i] = 20
+        ##         scatter.marker.color = c
+        ##         scatter.marker.size = s
+        ## 
+        ## scatter.on_click(update_point)
+        ## ##########
 
         if publish:
             self.plot = py.iplot(fig, filename=filename)
