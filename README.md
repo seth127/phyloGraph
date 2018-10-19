@@ -26,13 +26,12 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 * try clustering down to Order and then jitter after that.
 * create button to snap back to time up-and-down
 * button to freeze z-axis
-* get tsne/pca/mds to work better
 * have click trigger a refocus() (I don't think this is actually possible, at least not in offline mode)
+* fix year (i.e. 2017 for Chrotomys) getting parsed into age
+    * CHECK ON WHY Homo Sapiens (and friends) all have values like 1753 for Begin 
 * try mds (on cf_text=True?) but adding some random noise to it
 * adjust the log scale (add 5 or 10 before logging?)
-* CHECK ON WHY Homo Sapiens (and friends) ARE AT 5MM YEARS (getting filled somehow)
 * figure out how to format labels for non-focus nodes
-* fix year (i.e. 2017 for Chrotomys) getting parsed into age
 * put back in max_depth and max_nodes stuff
 * have some smarter X- and Y-dims (maybe?)
     * would be awesome to scrape classification stuff from wikipedia and the PCA it, but having trouble getting it from infobox. 
