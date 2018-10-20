@@ -509,7 +509,7 @@ class phyloData:
                 self.df.at[self.df['id']==c, 'Begin'] = new_begin
                 self.df.at[self.df['id']==c, 'End'] = np.min([new_begin, float(parent_df['End'])])
 
-    def load_text_data(self, text_file, cf_text=True):
+    def load_text_data(self, text_file, cf_text=True, cf_level='order'):
         """"""
         self.text_df = pd.read_csv(text_file)
         try:
@@ -522,8 +522,9 @@ class phyloData:
         # filter to only classification words
         if cf_text:
             # define classification words (the next word after any of these will be kept)
-            #self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order', 'family', 'genus', 'species', 'clade']
-            self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order']
+            self.CF_WORDS = ['kingdom', 'phylum', 'class', 'subclass', 'order', 'family', 'genus', 'species', 'clade']
+            self.CF_WORDS = self.CF_WORDS[:self.CF_WORDS.index(cf_level)+1]
+
             # loop of all rows
             for i, row in self.text_df.iterrows():
                 if type(row['text']) == str:
@@ -663,16 +664,22 @@ class phyloData:
             XY = pd.DataFrame(X_pca, columns = ['x', 'y'])
             print("loaded PCA data")
         else:
-            X_pca = PCA(n_components=50).fit(X).transform(X)
+            #X_pca = PCA(n_components=50).fit(X).transform(X)
+            X_pca = X.copy()
             if mode == 'tsne':
                 X_tsne = TSNE().fit(X_pca)
                 XY = pd.DataFrame(X_tsne.embedding_, columns=['x', 'y'])
+                # scale the t-sne
+                max_x = np.max([np.max(XY['x']), abs(np.min(XY['x']))])
+                max_y = np.max([np.max(XY['y']), abs(np.min(XY['y']))])
+                XY['x'] = XY['x'] / (max_x * 0.5)
+                XY['y'] = XY['y'] / (max_y * 0.5)
                 print("loaded t-sne data")
             elif mode == 'mds':
                 dists = pdist(X_pca, cosine)
                 dist_matrix = pd.DataFrame(squareform(dists), 
-                                       columns=self.text_df['id'], 
-                                       index=self.text_df['id'])
+                                       columns=elders, 
+                                       index=elders)
         
                 scaler = MDS(dissimilarity='precomputed', random_state=123)
                 XY = pd.DataFrame(scaler.fit_transform(dist_matrix))
@@ -692,8 +699,12 @@ class phyloData:
         # jitter the rest
         self.jitter_XY()
 
+        # reset the root to the center
+        self.df.at[self.df['id'] == self.root, 'x'] = 0
+        self.df.at[self.df['id'] == self.root, 'y'] = 0
 
-    def jitter_XY(self, depth_mult=4, all=False):
+
+    def jitter_XY(self, depth_mult=4, jitter_all=False):
         """
         you have to call this before create_plot_data
         or it doesnt work right."""
@@ -701,7 +712,8 @@ class phyloData:
         #nodes_list[i]['x'] = parent[0]['x'] + (rn() * depth_mult)
         #nodes_list[i]['y'] = parent[0]['y'] + (rn() * depth_mult)
         #
-        if all:
+        print("jittering (all={})".format(jitter_all))
+        if jitter_all:
             keepers = list(self.df['id'])
         else:
             keepers = list(self.df.loc[self.df['elder']==0]['id'])
