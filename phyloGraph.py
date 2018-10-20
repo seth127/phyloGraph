@@ -400,8 +400,8 @@ class phyloData:
         else:
             return self.df
 
-    def write_prep_data(self, df_file, links_file):
-        '''writes the prepared nodes df and links list to files'''
+    def write_prep_data(self, df_file):
+        '''writes the prepared df to csv'''
         if self.df is None: 
             print("Must load data first. Try load_raw_file() or fetch_tol_data() and then parse_raw()")
         else:
@@ -414,6 +414,10 @@ class phyloData:
         must pass the id of the root node'''
         # read
         self.df = pd.read_csv(df_file)
+        # add log time
+        self.df['log_time'] = np.log1p(self.df['Begin'])
+
+        # assign root
         self.root = root
         self.root_age = self.df[self.df['id'] == self.root].squeeze()['Begin']
 
@@ -459,8 +463,11 @@ class phyloData:
         """fixes missing and weird ages
         starts at id passed as root and goes through all descendents. """
         
+        start = time()
+
         this_gen = self.links_dict[self.root]['children']
         while len(this_gen) > 0:
+            print("AAA {} fixing ages - {} in this_gen".format(np.round(time()-start, 1), len(this_gen)))
             next_gen = []
             for c in this_gen:
                 self.fix_this_age(c)
@@ -576,7 +583,7 @@ class phyloData:
                 check = self.links_dict[check]['parents'][0]
                 
 
-    def load_all_XY(self, mode='pca'):
+    def cluster_all_XY(self, mode='pca'):
         """mode must be 'pca' or 'tsne' or 'mds'
         """
         try:
@@ -618,22 +625,39 @@ class phyloData:
         self.df['y'] = list(XY['y'])
 
 
-    def load_XY(self, depth, mode='pca'):
+    def cluster_XY(self, max_depth, mode='pca'):
         """mode must be 'pca' or 'tsne' or 'mds'
-        depth is how many generations to go with clustering
+        max_depth is how many generations to go with clustering
         before switching to jitter
         """
+
+        self.df['elder'] = 0
+        elders = [self.root]
+        this_gen = self.links_dict[self.root]['children']
+        depth = 0
+        while depth < max_depth:
+            elders += this_gen
+            depth += 1
+            next_gen = []
+            for c in this_gen:
+                next_gen += self.links_dict[c]['children']
+            this_gen = next_gen
+
+        # add elder flag
+        self.df.at[self.df['id'].isin(elders), 'elder'] = 1
+
+
         try:
-            docs = list(self.text_df['text'])
+            docs = list(self.text_df.loc[self.text_df['id'].isin(elders)]['text'])
         except AttributeError:
-            print("FAILURE: self.text_df doesn't exist. Run PhyloGraph.load_text_data() first.")
+            print("FAILURE: self.text_df doesn't exist. Run PhyloData.load_text_data() first.")
             return None
         #
         vectorizer = CountVectorizer(max_df=0.5, min_df=0)
         vectors = vectorizer.fit_transform(docs)
         print("vocab shape: {}".format(vectors.shape))
         X = vectors.toarray()
-
+        
         if mode == 'pca':
             X_pca = PCA(n_components=2).fit(X).transform(X)
             XY = pd.DataFrame(X_pca, columns = ['x', 'y'])
@@ -649,7 +673,7 @@ class phyloData:
                 dist_matrix = pd.DataFrame(squareform(dists), 
                                        columns=self.text_df['id'], 
                                        index=self.text_df['id'])
-
+        
                 scaler = MDS(dissimilarity='precomputed', random_state=123)
                 XY = pd.DataFrame(scaler.fit_transform(dist_matrix))
                 XY.rename(index=str, columns={0:'x', 1:'y'}, inplace=True)
@@ -657,30 +681,43 @@ class phyloData:
             else:
                 print("mode must be one of 'pca' or 'tsne' or 'mds'")
                 return None
-        #
-        self.df['x'] = list(XY['x'])
-        self.df['y'] = list(XY['y'])
+        ##
+        #self.df['x'] = list(XY['x'])
+        #self.df['y'] = list(XY['y'])
+        # join back to df
+        XY['id'] = elders
+        self.df = self.df.drop(['x', 'y'], axis=1)\
+                         .merge(XY, how='left')
 
-    def rejitter_XY(self):
+        # jitter the rest
+        self.jitter_XY()
+
+
+    def jitter_XY(self, depth_mult=4, all=False):
         """
         you have to call this before create_plot_data
         or it doesnt work right."""
         #depth_mult = np.sqrt(node['Begin'])
         #nodes_list[i]['x'] = parent[0]['x'] + (rn() * depth_mult)
         #nodes_list[i]['y'] = parent[0]['y'] + (rn() * depth_mult)
-
+        #
+        if all:
+            keepers = list(self.df['id'])
+        else:
+            keepers = list(self.df.loc[self.df['elder']==0]['id'])
         #
         this_gen = self.links_dict[self.root]['children']
         while len(this_gen) > 0:
             next_gen = []
             for c in this_gen:
-                # get parent
-                parent = self.links_dict[c]['parents'][0]
-                parent_row = self.df[self.df['id'] == parent].squeeze()
-                this_row = self.df[self.df['id'] == c].squeeze()
-                # pass down x and y plus the jitter
-                self.df.at[self.df['id']==c, 'x'] = parent_row['x']+ (rn() * this_row['log_time'] / 4)#* np.sqrt(this_row['Begin']))
-                self.df.at[self.df['id']==c, 'y'] = parent_row['y']+ (rn() * this_row['log_time'] / 4)#* np.sqrt(this_row['Begin']))
+                if c in keepers:
+                    # get parent
+                    parent = self.links_dict[c]['parents'][0]
+                    parent_row = self.df[self.df['id'] == parent].squeeze()
+                    this_row = self.df[self.df['id'] == c].squeeze()
+                    # pass down x and y plus the jitter
+                    self.df.at[self.df['id']==c, 'x'] = parent_row['x']+ (rn() * this_row['log_time'] / depth_mult)#* np.sqrt(this_row['Begin']))
+                    self.df.at[self.df['id']==c, 'y'] = parent_row['y']+ (rn() * this_row['log_time'] / depth_mult)#* np.sqrt(this_row['Begin']))
                 # get next generation
                 next_gen += self.links_dict[c]['children']
             #
@@ -739,9 +776,6 @@ class phyloGraph():
             #print("AAA {} filtering plot_df to {} keepers ".format(np.round(time()-start, 1), len(keepers)))
             self.plot_df = self.df[self.df['id'].isin(keepers)]
             self.plot_df.reset_index(inplace=True, drop=True)
-
-            # add log time
-            self.plot_df['log_time'] = np.log1p(self.plot_df['Begin'])
 
         elif mode == 'focus':
             # add ancestors
