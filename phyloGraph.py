@@ -536,12 +536,10 @@ class phyloData:
                         if t in self.CF_WORDS:
                             this_cf.append(this_text[j+1])
                     this_cf = list(set(this_cf))
-                    this_cf += row['name'].split(' ') # at species name
 
                     # assign to row in text_df
-                    #self.text_df.at[i, 'text'] = ' '.join(this_cf)
                     if cf_text == 'add':
-                        self.text_df.at[i, 'text'] = row['text'] + ' '.join(this_cf) + ' '.join(this_cf) + ' '.join(this_cf) + ' '.join(this_cf) 
+                        self.text_df.at[i, 'text'] = row['text'] + ' '.join(this_cf)# + ' '.join(this_cf) + ' '.join(this_cf) + ' '.join(this_cf) 
                     else:
                         self.text_df.at[i, 'text'] = ' '.join(this_cf)
 
@@ -556,6 +554,44 @@ class phyloData:
 
             this_gen = next_gen
 
+        #
+        self.df = self.df.merge(self.text_df)
+
+    def fix_this_text_shitty(self, c):
+        check = c
+        this_row = self.text_df[self.text_df['id']==check].squeeze()
+        this_text = this_row['text']
+
+        # test condition
+        def test_this_text(this_text):
+            if type(this_text) != str:
+                this_text = ''
+                return True
+            elif len(this_text) < 50:
+               return True
+            else:
+                return False
+
+        fix = test_this_text(this_text)
+
+        if not fix:
+            return None
+        else:
+            while fix == True:
+                # add parents text
+                try:
+                    parent = self.links_dict[check]['parents'][0]
+                    parent_row = self.text_df[self.text_df['id']==parent].squeeze()
+                    this_text += ' '+parent_row['text'] 
+                    # load up next ancestor
+                    check = self.links_dict[parent_row['id']]['parents'][0]
+                except:
+                    pass
+                # check
+                fix = test_this_text(this_text)
+            # assign new value
+            self.text_df.at[self.text_df['id']==c, 'text'] = this_text
+
     def fix_this_text(self, c):
         # set up id to check
         check = c
@@ -566,18 +602,20 @@ class phyloData:
             this_text = this_row['text']
             if type(this_text) != str:
                 fix = True
-            elif len(this_text) < 50:
+            elif len(this_text) < 5:#0:
                 fix = True
             else:
-                # add parents text for better downward flow
-                try:
-                    parent = self.links_dict[c]['parents'][0]
-                    parent_row = self.text_df[self.text_df['id']==parent].squeeze()
-                    this_text += ' '+parent_row['text'] 
-                except:
-                    pass
-                #
-                this_text += ' '+this_row['name']# add the original name
+                # # add parents text for better downward flow
+                # try:
+                #     parent = self.links_dict[c]['parents'][0]
+                #     parent_row = self.text_df[self.text_df['id']==parent].squeeze()
+                #     this_text += ' '+parent_row['text'] 
+                # except:
+                #     pass
+                # #
+                # # add the original name
+                # this_text += ' '+self.text_df[self.text_df['id']==c].squeeze()['name'].lower()
+                # assign 
                 self.text_df.at[self.text_df['id']==c, 'text'] = this_text
 
             if fix == True:
@@ -626,6 +664,43 @@ class phyloData:
         self.df['y'] = list(XY['y'])
 
 
+    def get_elders(self, max_depth, min_kids=0):
+        """mode must be 'pca' or 'tsne' or 'mds'
+        max_depth is how many generations to go with clustering
+        before switching to jitter
+        """
+        # self.elder_dict = {
+        #     2499   : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #     14821  : {'x': 5,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #     114490 : {'x': 7,  'y': 7,   'colour': 'rgb(125,125,125)'},
+        #     114501 : {'x': 5,  'y': 3,   'colour': 'rgb(125,125,125)'},
+        #     114507 : {'x': 3,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #     114512 : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #     14826  : {'x': -7, 'y': -7, 'colour': 'rgb(125,125,125)'},
+        #     14828  : {'x': -9, 'y': -9, 'colour': 'rgb(125,125,125)'},
+        #     14829  : {'x': -7, 'y': -9, 'colour': 'rgb(125,125,125)'}
+        # }
+
+        # #self.df.loc[self.df['ancestor'] == 14829]
+        # #self.df.loc[self.df['ancestor'] == 14843]
+        # #self.df.loc[self.df['ancestor'] == 14922]
+        # self.df.loc[self.df['ancestor'] == 14952]
+
+        self.df['elder'] = None
+        elders = [self.root]
+        this_gen = self.links_dict[self.root]['children']
+        depth = 0
+        while depth < max_depth:
+            elders += this_gen
+            depth += 1
+            next_gen = []
+            for c in this_gen:
+                next_gen += self.links_dict[c]['children']
+            this_gen = next_gen
+
+        # add elder flag
+        self.df.at[(self.df['id'].isin(elders))  & (self.df['num_kids'] >= min_kids), 'elder'] = 1
+
     def cluster_XY(self, max_depth, mode='pca'):
         """mode must be 'pca' or 'tsne' or 'mds'
         max_depth is how many generations to go with clustering
@@ -646,7 +721,6 @@ class phyloData:
 
         # add elder flag
         self.df.at[self.df['id'].isin(elders), 'elder'] = 1
-
 
         try:
             docs = list(self.text_df.loc[self.text_df['id'].isin(elders)]['text'])
@@ -704,7 +778,7 @@ class phyloData:
         self.df.at[self.df['id'] == self.root, 'y'] = 0
 
 
-    def jitter_XY(self, depth_mult=4, jitter_all=False):
+    def jitter_XY(self, depth_mult=4, jitter_all=False, elders=False):
         """
         you have to call this before create_plot_data
         or it doesnt work right."""
@@ -712,11 +786,15 @@ class phyloData:
         #nodes_list[i]['x'] = parent[0]['x'] + (rn() * depth_mult)
         #nodes_list[i]['y'] = parent[0]['y'] + (rn() * depth_mult)
         #
-        print("jittering (all={})".format(jitter_all))
+        print("jittering (all={}, elders={})".format(jitter_all, elders))
         if jitter_all:
             keepers = list(self.df['id'])
         else:
-            keepers = list(self.df.loc[self.df['elder']==0]['id'])
+            if elders:
+                keepers = list(self.df.loc[self.df['elder']==0]['id'])
+            else:
+                keepers = list(self.df.loc[self.df['elder'].isna()]['id'])
+            
         #
         this_gen = self.links_dict[self.root]['children']
         while len(this_gen) > 0:
@@ -746,6 +824,18 @@ class phyloGraph():
         # load df and links_dict
         self.df = phyloData.df
         self.links_dict = phyloData.links_dict
+
+        # color codes
+        self.cf_color_list = ['animalia','amphibia','arthropoda','aves','mammalia','reptilia', 'actinopterygii']#'sarcopterygii'
+        self.cf_color_dict = {
+                'animalia':'#ccddee',
+                'amphibia':'#3ae2be',
+                'arthropoda':'#1a62be',
+                'aves':'#1ae27e',
+                'mammalia':'#ba426e',
+                'reptilia':'#5ad25e',
+                'actinopterygii':'#2a62de'
+            }
 
         # connect to plot.ly
         if (username is not None) & (api_key is not None):
@@ -871,6 +961,12 @@ class phyloGraph():
             labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
             # create color key
             group.append(node[self.color_attr])
+            #this_cf_col = '#cccccc'
+            #for cf in self.cf_color_list:
+            #    if cf in node['text']:
+            #        this_cf_col = self.cf_color_dict[cf]
+            #group.append(this_cf_col)
+            ####
             # create layout list
             d = node[self.Z_dim]
             layt.append([node['x'], 
@@ -1048,6 +1144,12 @@ class phyloGraph():
 
             # create color key
             group.append(node[self.color_attr])
+            #this_cf_col = '#cccccc'
+            #for cf in self.cf_color_list:
+            #    if cf in node['text']:
+            #        this_cf_col = self.cf_color_dict[cf]
+            #group.append(this_cf_col)
+            #####
             # create layout list
             d = node[self.Z_dim]
 
