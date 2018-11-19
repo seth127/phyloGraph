@@ -960,12 +960,12 @@ class phyloGraph():
         for i, node in self.plot_df.iterrows():
             labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
             # create color key
-            group.append(node[self.color_attr])
-            #this_cf_col = '#cccccc'
-            #for cf in self.cf_color_list:
-            #    if cf in node['text']:
-            #        this_cf_col = self.cf_color_dict[cf]
-            #group.append(this_cf_col)
+            #group.append(node[self.color_attr])
+            this_cf_col = '#cccccc'
+            for cf in self.cf_color_list:
+                if cf in node['text']:
+                    this_cf_col = self.cf_color_dict[cf]
+            group.append(this_cf_col)
             ####
             # create layout list
             d = node[self.Z_dim]
@@ -1143,12 +1143,12 @@ class phyloGraph():
                 labels.append("{} -- {} ({} MYA)".format(node['name'], node['id'], node['Begin']))
 
             # create color key
-            group.append(node[self.color_attr])
-            #this_cf_col = '#cccccc'
-            #for cf in self.cf_color_list:
-            #    if cf in node['text']:
-            #        this_cf_col = self.cf_color_dict[cf]
-            #group.append(this_cf_col)
+            #group.append(node[self.color_attr])
+            this_cf_col = '#cccccc'
+            for cf in self.cf_color_list:
+                if cf in node['text']:
+                    this_cf_col = self.cf_color_dict[cf]
+            group.append(this_cf_col)
             #####
             # create layout list
             d = node[self.Z_dim]
@@ -1159,9 +1159,9 @@ class phyloGraph():
                          d*self.Z_dim_mult])    
 
         # semi-hack to always make sure there are two colors
-        if self.color_attr == 'extinct':
-            group.append(0)
-            group.append(2)
+        #if self.color_attr == 'extinct':
+        #    group.append(0)
+        #    group.append(2)
         # because if it's all one or the other the color changes
         # and for some reason there are no 1's
 
