@@ -703,6 +703,76 @@ class phyloData:
         self.df.at[self.df['id'] == self.root, 'x'] = 0
         self.df.at[self.df['id'] == self.root, 'y'] = 0
 
+    def get_elders(self, max_depth, min_kids=0):
+        """mode must be 'pca' or 'tsne' or 'mds'
+        max_depth is how many generations to go with clustering
+        before switching to jitter
+        """
+        # self.elder_dict = {
+        #     2499   : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #     14821  : {'x': 5,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #     114490 : {'x': 7,  'y': 7,   'colour': 'rgb(125,125,125)'},
+        #     114501 : {'x': 5,  'y': 3,   'colour': 'rgb(125,125,125)'},
+        #     114507 : {'x': 3,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #     114512 : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #     14826  : {'x': -7, 'y': -7, 'colour': 'rgb(125,125,125)'},
+        #     14828  : {'x': -9, 'y': -9, 'colour': 'rgb(125,125,125)'},
+        #     14829  : {'x': -7, 'y': -9, 'colour': 'rgb(125,125,125)'}
+        # }
+
+        # #self.df.loc[self.df['ancestor'] == 14829]
+        # #self.df.loc[self.df['ancestor'] == 14843]
+        # #self.df.loc[self.df['ancestor'] == 14922]
+        # self.df.loc[self.df['ancestor'] == 14952]
+
+        self.df['elder'] = None
+        elders = [self.root]
+        this_gen = self.links_dict[self.root]['children']
+        depth = 0
+        while depth < max_depth:
+            elders += this_gen
+            depth += 1
+            next_gen = []
+            for c in this_gen:
+                next_gen += self.links_dict[c]['children']
+            this_gen = next_gen
+
+        # add elder flag
+        self.df.at[(self.df['id'].isin(elders))  & (self.df['num_kids'] >= min_kids), 'elder'] = 1
+
+    def manual_elders(self):
+        r1 = 0.5
+        r2 = 1
+        r3 = 2
+        r4 = r3 + r1
+
+        self.elder_dict = {
+            15040 : {'x': 0,   'y': 0},
+
+            15991 : {'x': -r2, 'y': r2},
+            16253 : {'x': -r3, 'y': r3},
+            16250 : {'x': -r2, 'y': r2+r1},
+
+            15994 : {'x': 0,   'y': -r2},
+            15997 : {'x': r1,  'y': r1},
+            15963 : {'x': r2,  'y': r2}
+
+            
+
+            #15963 : {'x':5, 'y':5}
+        }
+
+        #self.elder_dict = {
+        #    2499   : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #    14821  : {'x': 5,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #    114490 : {'x': 7,  'y': 7,   'colour': 'rgb(125,125,125)'},
+        #    114501 : {'x': 5,  'y': 3,   'colour': 'rgb(125,125,125)'},
+        #    114507 : {'x': 3,  'y': 5,   'colour': 'rgb(125,125,125)'},
+        #    114512 : {'x': 0,  'y': 0,   'colour': 'rgb(125,125,125)'},
+        #    14826  : {'x': -7, 'y': -7, 'colour': 'rgb(125,125,125)'},
+        #    14828  : {'x': -9, 'y': -9, 'colour': 'rgb(125,125,125)'},
+        #    14829  : {'x': -7, 'y': -9, 'colour': 'rgb(125,125,125)'},
+        #}
 
     def jitter_XY(self, depth_mult=4, jitter_all=False):
         """
@@ -716,7 +786,18 @@ class phyloData:
         if jitter_all:
             keepers = list(self.df['id'])
         else:
-            keepers = list(self.df.loc[self.df['elder']==0]['id'])
+            if 'elder' in list(self.df):
+                keepers = list(self.df.loc[self.df['elder']==0]['id'])
+            else:
+                self.manual_elders()
+                self.df['elder'] = None
+                for k,v in self.elder_dict.items():
+                    self.df.at[self.df['id']==k, 'x'] = v['x']
+                    self.df.at[self.df['id']==k, 'y'] = v['y']
+                    self.df.at[self.df['id']==k, 'elder'] = 1
+
+                keepers = list(self.df.loc[self.df['elder'].isna()]['id'])
+            
         #
         this_gen = self.links_dict[self.root]['children']
         while len(this_gen) > 0:
@@ -734,6 +815,7 @@ class phyloData:
                 next_gen += self.links_dict[c]['children']
             #
             this_gen = next_gen
+
 
 
 class phyloGraph():
@@ -829,6 +911,37 @@ class phyloGraph():
         # filtering out the ones with Begin == 0
         #print("AAA {} filtering out the ones with Begin == 0".format(np.round(time()-start, 1)))
         self.plot_df = self.plot_df.loc[self.plot_df['Begin'] > 0.1]
+
+        ##########
+        # add log time for endings
+        # self.end_df = self.plot_df.copy()
+        # for i, row in self.end_df.iterrows():
+        #     kids = self.end_df.loc[self.end_df['ancestor']==row['id']].squeeze()
+        #     if kids.shape[0] > 0:
+        #         if type(kids['Begin']) == np.float64:
+        #             ending = kids['Begin']
+        #         else:
+        #             ending = min(kids['Begin'])
+        #         self.end_df.at[i, 'log_time'] = np.log1p(ending)
+        #     else:
+        #         self.end_df.at[i, 'log_time'] = np.log1p(row['End'])
+        # 
+        # self.plot_df = pd.concat([self.plot_df, self.end_df])
+
+        for i, row in self.plot_df.iterrows():
+            kids = self.plot_df.loc[self.plot_df['ancestor']==row['id']].squeeze()
+            if kids.shape[0] > 0:
+                if type(kids['Begin']) == np.float64:
+                    ending = kids['Begin']
+                else:
+                    ending = min(kids['Begin'])
+                self.plot_df.at[i, 'End'] = ending
+
+        # make log time
+        self.plot_df['log_end'] = np.log1p(self.plot_df['End'])
+        
+
+        #########
         #print("AAA {} reseting index".format(np.round(time()-start, 1)))
         self.plot_df.reset_index(inplace=True, drop=True)
 
@@ -836,7 +949,7 @@ class phyloGraph():
     def create_plot_data(self, 
                          color_attr = 'extinct',
                          Z_dim = 'log_time',
-                         Z_dim_mult = 1, # set to -1 if using 'depth' for Z_dim
+                         Z_end = 'log_end',
                          max_nodes = 50000):
         ''''''
         # subset to max_nodes and max_depth
@@ -847,7 +960,7 @@ class phyloGraph():
         # assign args
         self.color_attr = color_attr
         self.Z_dim = Z_dim
-        self.Z_dim_mult = Z_dim_mult
+        self.Z_end = Z_end
 
         ## create links list
         links_list = []
@@ -872,11 +985,10 @@ class phyloGraph():
             # create color key
             group.append(node[self.color_attr])
             # create layout list
-            d = node[self.Z_dim]
             layt.append([node['x'], 
                          node['y'], 
-                         #(d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
-                         d*self.Z_dim_mult])
+                         #node[self.Z_dim]+np.random.uniform(-0.1,0.1,1)[0]])    
+                         node[self.Z_dim]])
 
         # make nodes
         Xn=[layt[k][0] for k in range(len(layt))]# x-coordinates of nodes
@@ -1035,6 +1147,9 @@ class phyloGraph():
         labels=[]
         group=[]
         layt = []
+        Xe=[]
+        Ye=[]
+        Ze=[]
         for i, node in self.focus_df.iterrows():
             # create text labels
             if add_links:
@@ -1048,13 +1163,17 @@ class phyloGraph():
 
             # create color key
             group.append(node[self.color_attr])
-            # create layout list
-            d = node[self.Z_dim]
 
+            # create layout list
             layt.append([node['x'], 
                          node['y'], 
-                         #(d*self.Z_dim_mult)+np.random.uniform(-0.1,0.1,1)[0]])    
-                         d*self.Z_dim_mult])    
+                         #node[self.Z_dim]+np.random.uniform(-0.1,0.1,1)[0]])    
+                         node[self.Z_dim]]) 
+
+            # create stems list
+            Xe += [node['x'], node['x'], None]
+            Ye += [node['y'], node['y'], None]
+            Ze += [node[self.Z_dim], node[self.Z_end], None]  
 
         # semi-hack to always make sure there are two colors
         if self.color_attr == 'extinct':
@@ -1068,10 +1187,10 @@ class phyloGraph():
         Yn=[layt[k][1] for k in range(len(layt))]# y-coordinates
         Zn=[layt[k][2] for k in range(len(layt))]# z-coordinates
 
-        # make edges
-        Xe=[]
-        Ye=[]
-        Ze=[]
+        # make branches
+        # Xe=[]
+        # Ye=[]
+        # Ze=[]
         for e in Edges:
             try: 
                 e0 = self.focus_df[self.focus_df['id'] == e[0]].index.values[0]
@@ -1084,7 +1203,7 @@ class phyloGraph():
             #
             Xe+=[layt[e0][0],layt[e1][0], None]# x-coordinates of edge ends
             Ye+=[layt[e0][1],layt[e1][1], None]  
-            Ze+=[layt[e0][2],layt[e1][2], None] 
+            Ze+=[layt[e0][2],layt[e0][2], None] 
 
         # make traces
         #this_text = self.focus_df.loc[self.focus_df['id']==focus]['name'].values[0]
@@ -1118,10 +1237,10 @@ class phyloGraph():
                        hoverinfo='text'
                        )
 
-                # kinfolk nodes
+        # kinfolk nodes
         tracef=go.Scatter3d(x=[focus_row['x']],
                        y=[focus_row['y']],
-                       z=[focus_row[self.Z_dim]*self.Z_dim_mult],
+                       z=[focus_row[self.Z_dim]],
                        mode='markers',
                        name='actors',
                        marker=dict(symbol='circle',
