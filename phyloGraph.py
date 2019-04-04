@@ -1237,7 +1237,7 @@ class phyloGraph():
                        hoverinfo='text'
                        )
 
-        # kinfolk nodes
+        # halo around focus point
         tracef=go.Scatter3d(x=[focus_row['x']],
                        y=[focus_row['y']],
                        z=[focus_row[self.Z_dim]],
@@ -1254,6 +1254,15 @@ class phyloGraph():
 
         self.focus_plot_data = [trace1k, trace2k, tracef]
         self.layout.title = this_title
+
+        ########
+        self.focus_df[['x', 'y', self.Z_dim, self.color_attr]]\
+                    .rename(index=str, columns={self.Z_dim: 'z', self.color_attr:'color'})\
+                    .to_csv('data/fake_points.csv', index=False)
+
+        pd.DataFrame({'x':Xe, 'y':Ye, 'z':Ze}).to_csv('data/fake_lines.csv', index=False)
+
+        ########
 
         #
         print("Loaded plot data. Highlighting: {}".format(focus))
