@@ -22,16 +22,36 @@ var y_node_f;
 var z_node_f;
 var c_node_f;
 
+var FOCUS_NODE_DATA = 'data/fake_points_focus.csv';
+var FOCUS_LINE_DATA = 'data/fake_lines_focus.csv';
+//var NODE_DATA = 'data/fake_points.csv'
+//var LINE_DATA = 'data/fake_lines.csv' 
+var NODE_DATA = 'data/Mammalia-15040-df-nodes.csv'
+var LINE_DATA = 'data/Mammalia-15040-df-lines.csv'
+
+var nodeFocusPromise = getFocusNodeData(FOCUS_NODE_DATA);
+var lineFocusPromise = getFocusLineData(FOCUS_LINE_DATA);
+
+var nodePromise = getNodeData(NODE_DATA);
+var linePromise = getLineData(LINE_DATA);
+
+
+
+var X_NAME = 'x';
+var Y_NAME = 'y';
+var Z_NAME = 'z';
+var COLOR_NAME = 'extinct';
+
 
 // plot the focus nodes
 function getFocusNodeData(data_file, resolve, reject) {
     if (!reject) reject = (err) => console.log(err);
     return new Promise((resolve, reject) => {
         Plotly.d3.csv(data_file, function(err, rows){  
-            x_node_f = unpack(rows , 'x');
-            y_node_f = unpack(rows , 'y');
-            z_node_f = unpack(rows , 'z'); 
-            c_node_f = unpack(rows , 'color');
+            x_node_f = unpack(rows , X_NAME);
+            y_node_f = unpack(rows , Y_NAME);
+            z_node_f = unpack(rows , Z_NAME); 
+            c_node_f = unpack(rows , COLOR_NAME);
             resolve(true); // return true to check resolve status
         });
   });
@@ -41,9 +61,9 @@ function getFocusLineData(data_file, resolve, reject) {
     if (!reject) reject = (err) => console.log(err);
     return new Promise((resolve, reject) => {
     Plotly.d3.csv(data_file, function(err, rows){
-            x_lines_f = unpack(rows , 'x');
-            y_lines_f = unpack(rows , 'y');
-            z_lines_f = unpack(rows , 'z'); 
+            x_lines_f = unpack(rows , X_NAME);
+            y_lines_f = unpack(rows , Y_NAME);
+            z_lines_f = unpack(rows , Z_NAME); 
             resolve(true); // return true to check resolve status
         });
   });
@@ -54,10 +74,10 @@ function getNodeData(data_file, resolve, reject) {
     if (!reject) reject = (err) => console.log(err);
     return new Promise((resolve, reject) => {
         Plotly.d3.csv(data_file, function(err, rows){  
-            x_node = unpack(rows , 'x');
-            y_node = unpack(rows , 'y');
-            z_node = unpack(rows , 'z'); 
-            c_node = unpack(rows , 'color');
+            x_node = unpack(rows , X_NAME);
+            y_node = unpack(rows , Y_NAME);
+            z_node = unpack(rows , Z_NAME); 
+            c_node = unpack(rows , COLOR_NAME);
             //size_node = unpack(rows , 'size');
             //op_node = unpack(rows , 'opacity');
             // if error
@@ -72,9 +92,9 @@ function getLineData(data_file, resolve, reject) {
     if (!reject) reject = (err) => console.log(err);
     return new Promise((resolve, reject) => {
     Plotly.d3.csv(data_file, function(err, rows){
-            x_lines = unpack(rows , 'x');
-            y_lines = unpack(rows , 'y');
-            z_lines = unpack(rows , 'z'); 
+            x_lines = unpack(rows , X_NAME);
+            y_lines = unpack(rows , Y_NAME);
+            z_lines = unpack(rows , Z_NAME); 
             // if error
             //reject(err);
             // resolve here
@@ -138,12 +158,6 @@ function makePlot(layout) {
   //make plot
   Plotly.plot('graph', data, layout);
 }
-
-var nodeFocusPromise = getFocusNodeData('data/fake_points_focus.csv');
-var lineFocusPromise = getFocusLineData('data/fake_lines_focus.csv');
-
-var nodePromise = getNodeData('data/fake_points.csv');
-var linePromise = getLineData('data/fake_lines.csv');
 
 // check for data, then plot
 Promise.all([
