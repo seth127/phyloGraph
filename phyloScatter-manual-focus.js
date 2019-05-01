@@ -1,9 +1,12 @@
-
+// https://plot.ly/javascript/reference/
 // helper function to unpack csv
 function unpack(rows, key) {
   return rows.map(function(row) 
     { return row[key]; }); 
 }
+
+var myPlot = document.getElementById('graph');
+var hoverInfo = document.getElementById('hoverinfo');
 
 var x_lines;
 var y_lines;
@@ -12,6 +15,8 @@ var x_node;
 var y_node;
 var z_node;
 var c_node;
+var label_node;
+var img_node;
 //var size_node;
 //var op_node;
 var x_lines_f;
@@ -35,12 +40,12 @@ var lineFocusPromise = getFocusLineData(FOCUS_LINE_DATA);
 var nodePromise = getNodeData(NODE_DATA);
 var linePromise = getLineData(LINE_DATA);
 
-
-
 var X_NAME = 'x';
 var Y_NAME = 'y';
 var Z_NAME = 'z';
 var COLOR_NAME = 'extinct';
+var LABEL_NAME = 'name';
+var IMG_NAME = 'img_base64';
 
 
 // plot the focus nodes
@@ -78,6 +83,8 @@ function getNodeData(data_file, resolve, reject) {
             y_node = unpack(rows , Y_NAME);
             z_node = unpack(rows , Z_NAME); 
             c_node = unpack(rows , COLOR_NAME);
+            label_node = unpack(rows , LABEL_NAME);
+            img_node = unpack(rows , IMG_NAME);
             //size_node = unpack(rows , 'size');
             //op_node = unpack(rows , 'opacity');
             // if error
@@ -133,6 +140,10 @@ function makePlot(layout) {
          x: x_node,
          y: y_node,
          z: z_node,
+         text: img_node,
+         hoverinfo: "text",
+         //name: img_node,
+         //label: 'hoverImg',
          mode: 'markers',
          type: 'scatter3d',
          opacity: 0.3,
@@ -148,6 +159,7 @@ function makePlot(layout) {
           y: y_lines,
           z: z_lines,
           opacity: 0.3,
+          hoverinfo: 'skip',
           line: {
             width: 2,
         //    color: c,
@@ -156,8 +168,35 @@ function makePlot(layout) {
         }
     ];
   //make plot
-  Plotly.plot('graph', data, layout);
+  Plotly.plot(myPlot, data, layout);
+    
+  myPlot.on('plotly_click', function(data){
+  	alert('did you just click on me?!')
+  })
+  
+  // hover
+  myPlot.on('plotly_hover', function(data){
+      var infotext = data.points.map(function(d){
+        //return (d.data.name+': x= '+d.x+', y= '+d.y.toPrecision(3));
+          //console.log(d.text+': x= '+d.x+', y= '+d.y);
+          //console.log(d);
+          naw = d;
+          return (d.text);
+      });
+      
+      var infodata = '<img src="'+infotext + '"/>'
+      console.log(infodata)
+      
+      hoverInfo.innerHTML = infodata;
+  })
+   .on('plotly_unhover', function(data){
+      hoverInfo.innerHTML = '';
+  });
+
 }
+
+var naw;
+
 
 // check for data, then plot
 Promise.all([
@@ -174,6 +213,7 @@ Promise.all([
 
 // the layout for the plot
 var layout_default = {
+        hovermode:'closest',
         autosize: false,
         height: 700,
         width: 1200,
