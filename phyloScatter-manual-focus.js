@@ -176,16 +176,15 @@ function makePlot(layout) {
   
   // hover
   myPlot.on('plotly_hover', function(data){
-      var infotext = data.points.map(function(d){
+      var infotext = data.points.map(function(d, i){
         //return (d.data.name+': x= '+d.x+', y= '+d.y.toPrecision(3));
           //console.log(d.text+': x= '+d.x+', y= '+d.y);
-          //console.log(d);
           naw = d;
           return (d.text);
       });
       
-      var infodata = '<img src="'+infotext + '"/>'
-      console.log(infodata)
+      var infodata = '<span>naw</span><img src="'+infotext + '"/>'
+      //console.log(infodata)
       
       hoverInfo.innerHTML = infodata;
   })

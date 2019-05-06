@@ -22,8 +22,14 @@ The real work is all done in `phyloGraph.py`. Some boilerplate to easily generat
 Some example plots are published on [my plotly account](https://plot.ly/~seth127/).
 
 ## To Do List
+* Fill in wiki images from google
+* put images (and some relevant text) in an info box to the side. (Maybe straight from wiki?)
+* make `getKin()` function in Javascript
+* filter and redraw on `getKin()`
+* **OLD STUFF**
 * WORD EMBEDDINGS!!! for the clustering and then probably t-sne
     * Boom!
+    * yea, this didn't work. Although it'll be cool for a few static (or better yet not static) demo slides and a blog post about how sometimes manual labeling is better than machine learning.
 * move fix_age and fix_text steps to data prep so that we can just save out the dataframe(s) that's already filled in. THEN RUN IT because Chordata takes 90 mins to fix the age (which it shouldn't, but maybe I need to look at that too. Maybe has to do with Humans being 5MYA but also 3MYA but really 1MYA?)
 * try clustering down to Order and then jitter after that.
 * create button to snap back to time up-and-down
