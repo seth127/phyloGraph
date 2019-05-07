@@ -26,6 +26,7 @@ Some example plots are published on [my plotly account](https://plot.ly/~seth127
 * put images (and some relevant text) in an info box to the side. (Maybe straight from wiki?)
 * make `getKin()` function in Javascript
 * filter and redraw on `getKin()`
+* move all ETL and scraping and image stuff to module
 * **OLD STUFF**
 * WORD EMBEDDINGS!!! for the clustering and then probably t-sne
     * Boom!

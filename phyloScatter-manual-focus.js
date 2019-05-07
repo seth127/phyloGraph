@@ -45,7 +45,7 @@ var Y_NAME = 'y';
 var Z_NAME = 'z';
 var COLOR_NAME = 'extinct';
 var LABEL_NAME = 'name';
-var IMG_NAME = 'img_base64';
+var IMG_NAME = 'img';
 
 
 // plot the focus nodes
@@ -141,6 +141,7 @@ function makePlot(layout) {
          y: y_node,
          z: z_node,
          text: img_node,
+         //other: x_node,
          hoverinfo: "text",
          //name: img_node,
          //label: 'hoverImg',
@@ -170,9 +171,9 @@ function makePlot(layout) {
   //make plot
   Plotly.plot(myPlot, data, layout);
     
-  myPlot.on('plotly_click', function(data){
+  /*myPlot.on('plotly_click', function(data){
   	alert('did you just click on me?!')
-  })
+  })*/
   
   // hover
   myPlot.on('plotly_hover', function(data){
@@ -180,10 +181,17 @@ function makePlot(layout) {
         //return (d.data.name+': x= '+d.x+', y= '+d.y.toPrecision(3));
           //console.log(d.text+': x= '+d.x+', y= '+d.y);
           naw = d;
-          return (d.text);
+          return (d.text.split('XSXSXSX')[0]);
       });
       
-      var infodata = '<span>naw</span><img src="'+infotext + '"/>'
+      var infoimg = data.points.map(function(d, i){
+        //return (d.data.name+': x= '+d.x+', y= '+d.y.toPrecision(3));
+          //console.log(d.text+': x= '+d.x+', y= '+d.y);
+          naw = d;
+          return (d.text.split('XSXSXSX')[1]);
+      });
+      
+      var infodata = '<img src="'+infoimg + '"/><br><span>'+infotext+'</span>'
       //console.log(infodata)
       
       hoverInfo.innerHTML = infodata;
